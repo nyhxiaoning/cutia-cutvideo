@@ -10,6 +10,7 @@ import { EmptyView } from "./empty-view";
 import { useEditor } from "@/hooks/use-editor";
 import { useElementSelection } from "@/hooks/timeline/element/use-element-selection";
 import type { TimelineElement, TimelineTrack } from "@/types/timeline";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 interface ElementWithTrack {
 	element: TimelineElement;
@@ -40,7 +41,8 @@ export function PropertiesPanel() {
 	);
 
 	return (
-		<div className="panel bg-background h-full rounded-sm border overflow-hidden">
+		<div className="group panel bg-background h-full rounded-sm border overflow-hidden">
+			<OpenInEditor source="src/components/editor/panels/properties/index.tsx" line={29} />
 			{selectedElements.length > 0 ? (
 				<ScrollArea className="h-full">
 					{grouped.text && grouped.text.length > 0 && (

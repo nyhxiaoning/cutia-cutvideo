@@ -12,6 +12,7 @@ import { MobileStickerDrawer } from "./mobile-drawer/mobile-sticker-drawer";
 import { MobileAudioDrawer } from "./mobile-drawer/mobile-audio-drawer";
 import { MobileAIDrawer } from "./mobile-drawer/mobile-ai-drawer";
 import { useCloseDrawerOnInsert } from "./hooks/use-close-drawer-on-insert";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function MobileEditorLayout() {
 	useCloseDrawerOnInsert();
@@ -26,7 +27,8 @@ export function MobileEditorLayout() {
 	}, []);
 
 	return (
-		<div ref={rootRef} className="flex h-full flex-col">
+		<div ref={rootRef} className="group relative flex h-full flex-col">
+			<OpenInEditor source="src/components/editor/mobile/mobile-editor-layout.tsx" line={16} />
 			<MobileHeader />
 			<MobilePreview />
 			<MobileTimeline />

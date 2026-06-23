@@ -38,6 +38,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Spinner } from "@/components/ui/spinner";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 function isStickerCategory(value: string): value is StickerCategory {
 	return STICKER_CATEGORIES.includes(value as StickerCategory);
@@ -48,7 +49,9 @@ export function StickersView() {
 	const { selectedCategory, setSelectedCategory } = useStickersStore();
 
 	return (
-		<BaseView
+		<div className="group relative">
+			<OpenInEditor source="src/components/editor/panels/assets/views/stickers.tsx" line={46} />
+			<BaseView
 			value={selectedCategory}
 			onValueChange={(v) => {
 				if (isStickerCategory(v)) {
@@ -83,6 +86,7 @@ export function StickersView() {
 			]}
 			className="flex h-full flex-col overflow-hidden p-0"
 		/>
+		</div>
 	);
 }
 

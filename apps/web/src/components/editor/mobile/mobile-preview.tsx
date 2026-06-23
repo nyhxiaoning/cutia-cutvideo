@@ -13,6 +13,7 @@ import { invokeAction } from "@/lib/actions";
 import { PauseIcon, PlayIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { cn } from "@/utils/ui";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 function usePreviewSize() {
 	const editor = useEditor();
@@ -164,7 +165,8 @@ export function MobilePreview() {
 	}, []);
 
 	return (
-		<div className="relative flex min-h-[30vh] flex-1 items-center justify-center bg-black">
+		<div className="group relative flex min-h-[30vh] flex-1 items-center justify-center bg-black">
+			<OpenInEditor source="src/components/editor/mobile/mobile-preview.tsx" line={158} />
 			<MobilePreviewCanvas />
 			<MobileRenderTreeController />
 

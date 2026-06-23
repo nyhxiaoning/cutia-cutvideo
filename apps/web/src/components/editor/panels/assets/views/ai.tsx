@@ -48,6 +48,7 @@ import { useCharacterStore } from "@/stores/character-store";
 import type { AICharacter } from "@/types/character";
 import { UserIcon } from "@hugeicons/core-free-icons";
 import { Link, useRouter } from "@/lib/navigation";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 const ASPECT_RATIOS = [
 	{ value: "auto", label: "Auto" },
@@ -1173,7 +1174,9 @@ export function AIView() {
 	const { t } = useTranslation();
 
 	return (
-		<BaseView
+		<div className="group relative">
+			<OpenInEditor source="src/components/editor/panels/assets/views/ai.tsx" line={1172} />
+			<BaseView
 			defaultTab="generate"
 			tabs={[
 				{
@@ -1194,5 +1197,6 @@ export function AIView() {
 			]}
 			className="flex h-full flex-col"
 		/>
+		</div>
 	);
 }

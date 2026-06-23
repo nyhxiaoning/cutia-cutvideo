@@ -149,7 +149,9 @@ export function TextProperties({
 		blur: 4,
 	};
 	const backgroundEnabled =
-		element.backgroundColor !== "transparent" && element.backgroundColor !== "";
+		!!element.backgroundColor &&
+		element.backgroundColor !== "transparent" &&
+		element.backgroundColor !== "";
 
 	const updateStroke = ({
 		stroke,
@@ -672,7 +674,7 @@ export function TextProperties({
 											<PropertyItemLabel>{t("Color")}</PropertyItemLabel>
 											<PropertyItemValue>
 												<ColorPicker
-													value={element.backgroundColor.replace("#", "")}
+													value={(element.backgroundColor ?? "transparent").replace("#", "")}
 													onChange={(color) =>
 														handleColorChange({ color: `#${color}` })
 													}

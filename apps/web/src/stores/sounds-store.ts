@@ -1,6 +1,6 @@
 import { i18next } from "@/lib/i18n";
 import { create } from "zustand";
-import type { SoundEffect, SavedSound } from "@/types/sounds";
+import type { SoundEffect, SavedSound, UserAudio } from "@/types/sounds";
 import { storageService } from "@/services/storage/service";
 import { toast } from "sonner";
 import { EditorCore } from "@/core";
@@ -60,6 +60,13 @@ interface SoundsStore {
 		soundEffect: SoundEffect;
 	}) => Promise<void>;
 	clearSavedSounds: () => Promise<void>;
+	userAudios: UserAudio[];
+	isLoadingUserAudios: boolean;
+	userAudiosError: string | null;
+	loadUserAudios: () => Promise<void>;
+	addUserAudio: ({ audio }: { audio: UserAudio }) => Promise<void>;
+	removeUserAudio: ({ id }: { id: string }) => Promise<void>;
+	addUserAudioToTimeline: ({ audio }: { audio: UserAudio }) => Promise<boolean>;
 }
 
 export const useSoundsStore = create<SoundsStore>((set, get) => ({
@@ -87,6 +94,9 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
 	isSavedSoundsLoaded: false,
 	isLoadingSavedSounds: false,
 	savedSoundsError: null,
+	userAudios: [],
+	isLoadingUserAudios: false,
+	userAudiosError: null,
 
 	setTopSoundEffects: ({ sounds }) => set({ topSoundEffects: sounds }),
 	setLoading: ({ loading }) => set({ isLoading: loading }),
@@ -203,6 +213,107 @@ export const useSoundsStore = create<SoundsStore>((set, get) => ({
 			set({ savedSoundsError: errorMessage });
 			toast.error(i18next.t("Failed to clear saved sounds"));
 			console.error("Failed to clear saved sounds:", error);
+		}
+	},
+
+	loadUserAudios: async () => {
+		try {
+			set({ isLoadingUserAudios: true, userAudiosError: null });
+			const data = await storageService.loadUserAudios();
+			set({
+				userAudios: data.audios,
+				isLoadingUserAudios: false,
+			});
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to load user audios";
+			set({
+				userAudiosError: errorMessage,
+				isLoadingUserAudios: false,
+			});
+			console.error("Failed to load user audios:", error);
+		}
+	},
+
+	addUserAudio: async ({ audio }) => {
+		try {
+			await storageService.saveUserAudio({ audio });
+			set((state) => ({
+				userAudios: [...state.userAudios, audio],
+			}));
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to save audio";
+			set({ userAudiosError: errorMessage });
+			toast.error(i18next.t("Failed to save audio"));
+			console.error("Failed to save user audio:", error);
+		}
+	},
+
+	removeUserAudio: async ({ id }) => {
+		try {
+			await storageService.removeUserAudio({ id });
+			set((state) => ({
+				userAudios: state.userAudios.filter((audio) => audio.id !== id),
+			}));
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "Failed to remove audio";
+			set({ userAudiosError: errorMessage });
+			toast.error(i18next.t("Failed to remove audio"));
+			console.error("Failed to remove user audio:", error);
+		}
+	},
+
+	addUserAudioToTimeline: async ({ audio }) => {
+		try {
+			const editor = EditorCore.getInstance();
+			const currentTime = editor.playback.getCurrentTime();
+
+			let audioUrl: string;
+			let arrayBuffer: ArrayBuffer;
+
+			if (audio.source === "upload" && audio.blob) {
+				audioUrl = URL.createObjectURL(audio.blob);
+				arrayBuffer = await audio.blob.arrayBuffer();
+			} else if (audio.originalUrl) {
+				audioUrl = audio.originalUrl;
+				const response = await fetch(audioUrl);
+				if (!response.ok)
+					throw new Error(
+						`Failed to download audio: ${response.statusText}`,
+					);
+				arrayBuffer = await response.arrayBuffer();
+			} else {
+				toast.error(i18next.t("Audio file not available"));
+				return false;
+			}
+
+			const audioContext = new AudioContext();
+			const buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+			const element = buildLibraryAudioElement({
+				sourceUrl: audioUrl,
+				name: audio.name,
+				duration: audio.duration,
+				startTime: currentTime,
+				buffer,
+			});
+
+			editor.timeline.insertElement({
+				placement: { mode: "auto", trackType: "audio" },
+				element,
+			});
+			return true;
+		} catch (error) {
+			console.error("Failed to add audio to timeline:", error);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: i18next.t("Failed to add audio to timeline"),
+				{ id: `user-audio-${audio.id}` },
+			);
+			return false;
 		}
 	},
 

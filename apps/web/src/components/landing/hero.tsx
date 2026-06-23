@@ -10,11 +10,11 @@ import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 
 const floatingParticles = Array.from({ length: 6 }, (_, i) => ({
 	id: i,
-	size: 2 + Math.random() * 3,
-	x: 10 + Math.random() * 80,
-	y: 10 + Math.random() * 80,
-	duration: 15 + Math.random() * 20,
-	delay: Math.random() * -20,
+	size: [3, 4, 2, 5, 3, 2][i],
+	x: [15, 75, 40, 85, 25, 60][i],
+	y: [20, 60, 80, 30, 50, 70][i],
+	duration: [20, 25, 18, 30, 22, 28][i],
+	delay: [0, -5, -10, -15, -3, -8][i],
 }));
 
 export function Hero() {

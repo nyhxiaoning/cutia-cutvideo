@@ -31,11 +31,13 @@ import Image from "next/image";
 import { cn } from "@/utils/ui";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 import { useAgentStore } from "@/stores/agent-store";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function EditorHeader() {
 	const { t } = useTranslation();
 	return (
-		<header className="bg-background flex h-[3.4rem] items-center justify-between px-3 pt-0.5">
+		<header className="group relative bg-background flex h-[3.4rem] items-center justify-between px-3 pt-0.5">
+			<OpenInEditor source="src/components/editor/editor-header.tsx" line={35} />
 			<div className="flex items-center gap-1">
 				<ProjectDropdown />
 				<EditableProjectName />

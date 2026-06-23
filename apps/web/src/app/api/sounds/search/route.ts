@@ -196,13 +196,21 @@ export async function GET(request: NextRequest) {
 			);
 		}
 
+		const apiKey = webEnv.FREESOUND_API_KEY;
+		if (!apiKey || apiKey === "your_api_key_here") {
+			return NextResponse.json(
+				{ error: "Freesound API key is not configured" },
+				{ status: 503 },
+			);
+		}
+
 		const baseUrl = "https://freesound.org/apiv2/search/text/";
 
 		const sortParam = buildSortParameter({ query, sort });
 
 		const params = new URLSearchParams({
 			query: query || "",
-			token: webEnv.FREESOUND_API_KEY ?? "",
+			token: apiKey,
 			page: page.toString(),
 			page_size: pageSize.toString(),
 			sort: sortParam,

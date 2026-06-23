@@ -2,11 +2,13 @@
 
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogBody,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
@@ -16,20 +18,28 @@ import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useSoundSearch } from "@/hooks/use-sound-search";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 import { useSoundsStore } from "@/stores/sounds-store";
-import type { SavedSound, SoundEffect } from "@/types/sounds";
+import type { SavedSound, SoundEffect, UserAudio } from "@/types/sounds";
 import { cn } from "@/utils/ui";
 import {
+	Cancel01Icon,
+	CloudUploadIcon,
+	ComputerIcon,
 	FavouriteIcon,
 	FilterMailIcon,
+	Link04Icon,
+	MusicNote03Icon,
 	PauseIcon,
 	PlayIcon,
 	PlusSignIcon,
@@ -78,6 +88,7 @@ function SoundEffectsView() {
 	const {
 		topSoundEffects,
 		isLoading,
+		error,
 		searchQuery,
 		setSearchQuery,
 		scrollPosition,
@@ -93,6 +104,10 @@ function SoundEffectsView() {
 		setCurrentPage,
 		setHasNextPage,
 		setTotalCount,
+		userAudios,
+		addUserAudio,
+		addUserAudioToTimeline,
+		removeUserAudio,
 	} = useSoundsStore();
 	const {
 		results: searchResults,
@@ -109,6 +124,15 @@ function SoundEffectsView() {
 	const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
 		null,
 	);
+
+	const [playingUserAudioId, setPlayingUserAudioId] = useState<string | null>(
+		null,
+	);
+	const [userAudioElement, setUserAudioElement] =
+		useState<HTMLAudioElement | null>(null);
+	const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
+	const [urlInput, setUrlInput] = useState("");
+	const [isUrlImporting, setIsUrlImporting] = useState(false);
 
 	const { scrollAreaRef, handleScroll } = useInfiniteScroll({
 		onLoadMore: loadMore,
@@ -235,53 +259,223 @@ function SoundEffectsView() {
 		}
 	};
 
-	return (
-		<div className="mt-1 flex h-full flex-col gap-5">
-			<div className="flex items-center gap-3">
-				<Input
-					placeholder={t("Search sound effects")}
-					className="bg-accent w-full"
-					containerClassName="w-full"
-					value={searchQuery}
-					onChange={({ currentTarget }) =>
-						setSearchQuery({ query: currentTarget.value })
-					}
-					showClearIcon
-					onClear={() => setSearchQuery({ query: "" })}
-				/>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button
-							variant="text"
-							size="icon"
-							className={cn(showCommercialOnly && "text-primary")}
-						>
-							<HugeiconsIcon icon={FilterMailIcon} />
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end" className="w-56">
-						<DropdownMenuCheckboxItem
-							checked={showCommercialOnly}
-							onCheckedChange={() => toggleCommercialFilter()}
-						>
-							{t("Show only commercially licensed")}
-						</DropdownMenuCheckboxItem>
-						<div className="text-muted-foreground px-2 py-1.5 text-xs">
-							{showCommercialOnly
-								? t("Only showing sounds licensed for commercial use")
-								: t("Showing all sounds regardless of license")}
-						</div>
-					</DropdownMenuContent>
-				</DropdownMenu>
-			</div>
+	const processAudioFile = async (file: File) => {
+		try {
+			const arrayBuffer = await file.arrayBuffer();
+			const audioContext = new AudioContext();
+			const buffer = await audioContext.decodeAudioData(arrayBuffer);
 
-			<div className="relative h-full overflow-hidden">
-				<ScrollArea
-					className="h-full flex-1"
-					ref={scrollAreaRef}
-					onScrollCapture={handleScrollWithPosition}
-				>
-					<div className="flex flex-col gap-4">
+			const userAudio: UserAudio = {
+				id: crypto.randomUUID(),
+				name: file.name,
+				source: "upload",
+				blob: file,
+				duration: buffer.duration,
+				createdAt: new Date().toISOString(),
+			};
+
+			await addUserAudio({ audio: userAudio });
+		} catch (error) {
+			console.error("Failed to process audio file:", error);
+			toast.error(t("Failed to process audio file"));
+		}
+	};
+
+	const { openFilePicker, fileInputProps } = useFileUpload({
+		accept: "audio/*",
+		multiple: false,
+		onFilesSelected: (files) => processAudioFile(files[0]),
+	});
+
+	const handleUrlImport = async () => {
+		const trimmedUrl = urlInput.trim();
+		if (!trimmedUrl) return;
+
+		try {
+			new URL(trimmedUrl);
+		} catch {
+			toast.error(t("Please enter a valid URL"));
+			return;
+		}
+
+		setIsUrlImporting(true);
+		try {
+			const response = await fetch(trimmedUrl);
+			if (!response.ok)
+				throw new Error(`Failed to fetch: ${response.statusText}`);
+			const arrayBuffer = await response.arrayBuffer();
+			const audioContext = new AudioContext();
+			const buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+			const fileName = trimmedUrl.split("/").pop() || trimmedUrl;
+
+			const userAudio: UserAudio = {
+				id: crypto.randomUUID(),
+				name: fileName,
+				source: "url",
+				originalUrl: trimmedUrl,
+				blob: new Blob([arrayBuffer]),
+				duration: buffer.duration,
+				createdAt: new Date().toISOString(),
+			};
+
+			await addUserAudio({ audio: userAudio });
+			setIsUrlDialogOpen(false);
+			setUrlInput("");
+			toast.success(t("Audio imported successfully"));
+		} catch (error) {
+			console.error("Error importing from URL:", error);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: t("Failed to import audio from URL"),
+			);
+		} finally {
+			setIsUrlImporting(false);
+		}
+	};
+
+	const playUserAudio = ({ audio }: { audio: UserAudio }) => {
+		if (playingUserAudioId === audio.id) {
+			userAudioElement?.pause();
+			setPlayingUserAudioId(null);
+			return;
+		}
+
+		userAudioElement?.pause();
+
+		const url =
+			audio.source === "upload" && audio.blob
+				? URL.createObjectURL(audio.blob)
+				: audio.originalUrl;
+
+		if (url) {
+			const audioEl = new Audio(url);
+			audioEl.addEventListener("ended", () => {
+				setPlayingUserAudioId(null);
+			});
+			audioEl.addEventListener("error", () => {
+				setPlayingUserAudioId(null);
+			});
+			audioEl.play().catch((error: DOMException) => {
+				if (error.name === "AbortError") return;
+				console.error("Failed to play audio:", error);
+				setPlayingUserAudioId(null);
+			});
+
+			setUserAudioElement(audioEl);
+			setPlayingUserAudioId(audio.id);
+		}
+	};
+
+	const formatDuration = (seconds: number) => {
+		const min = Math.floor(seconds / 60);
+		const sec = Math.floor(seconds % 60);
+		return `${min}:${sec.toString().padStart(2, "0")}`;
+	};
+
+	const formatTimestamp = (isoString: string) => {
+		const date = new Date(isoString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		if (diffMins < 1) return t("Just now");
+		if (diffMins < 60) return t("{{num}} minute ago", { num: diffMins });
+		if (diffHours < 24) return t("{{num}} hour ago", { num: diffHours });
+		if (diffDays < 7) return t("{{num}} day ago", { num: diffDays });
+		return date.toLocaleDateString();
+	};
+
+	const handleDeleteUserAudio = ({ id }: { id: string }) => {
+		if (playingUserAudioId === id) {
+			userAudioElement?.pause();
+			setPlayingUserAudioId(null);
+		}
+		removeUserAudio({ id });
+	};
+
+	return (
+		<>
+			<input {...fileInputProps} />
+			<div className="group relative mt-1 flex h-full flex-col gap-5">
+				<OpenInEditor source="src/components/editor/panels/assets/views/sounds.tsx" line={85} />
+				<div className="flex items-center gap-3">
+					<Input
+						placeholder={t("Search sound effects")}
+						className="bg-accent w-full"
+						containerClassName="w-full"
+						value={searchQuery}
+						onChange={({ currentTarget }) =>
+							setSearchQuery({ query: currentTarget.value })
+						}
+						showClearIcon
+						onClear={() => setSearchQuery({ query: "" })}
+					/>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant="text"
+								size="icon"
+								className={cn(showCommercialOnly && "text-primary")}
+							>
+								<HugeiconsIcon icon={FilterMailIcon} />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuCheckboxItem
+								checked={showCommercialOnly}
+								onCheckedChange={() => toggleCommercialFilter()}
+							>
+								{t("Show only commercially licensed")}
+							</DropdownMenuCheckboxItem>
+							<div className="text-muted-foreground px-2 py-1.5 text-xs">
+								{showCommercialOnly
+									? t("Only showing sounds licensed for commercial use")
+									: t("Showing all sounds regardless of license")}
+							</div>
+						</DropdownMenuContent>
+					</DropdownMenu>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="gap-1.5">
+								<HugeiconsIcon icon={CloudUploadIcon} />
+								{t("Import")}
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem
+								onClick={openFilePicker}
+								className="gap-2"
+							>
+								<HugeiconsIcon icon={ComputerIcon} className="size-4" />
+								{t("From Device")}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setIsUrlDialogOpen(true)}
+								className="gap-2"
+							>
+								<HugeiconsIcon icon={Link04Icon} className="size-4" />
+								{t("From URL")}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+
+				<div className="relative h-full overflow-hidden">
+					<ScrollArea
+						className="h-full flex-1"
+						ref={scrollAreaRef}
+						onScrollCapture={handleScrollWithPosition}
+					>
+						<div className="flex flex-col gap-4">
+							{error && !searchQuery && (
+								<div className="text-destructive text-sm">
+									{t("Error: {{message}}", { message: error })}
+								</div>
+						)}
 						{isLoading && !searchQuery && (
 							<div className="text-muted-foreground text-sm">
 								{t("Loading sounds...")}
@@ -312,10 +506,48 @@ function SoundEffectsView() {
 								{t("Loading more sounds...")}
 							</div>
 						)}
+
+						{userAudios.length > 0 && (
+							<>
+								<Separator className="my-2" />
+								<div className="flex items-center justify-between">
+									<p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+										{t("Your uploads")}
+									</p>
+									<p className="text-muted-foreground text-xs">
+										{t("{{num}} file", {
+											num: userAudios.length,
+										})}
+									</p>
+								</div>
+								{userAudios.map((audio) => (
+									<UserAudioItem
+										key={audio.id}
+										audio={audio}
+										isPlaying={playingUserAudioId === audio.id}
+										onPlay={playUserAudio}
+										onDelete={handleDeleteUserAudio}
+										onAddToTimeline={addUserAudioToTimeline}
+										formatDuration={formatDuration}
+										formatTimestamp={formatTimestamp}
+									/>
+								))}
+							</>
+						)}
 					</div>
 				</ScrollArea>
 			</div>
+
+			<UrlImportDialog
+				open={isUrlDialogOpen}
+				onOpenChange={setIsUrlDialogOpen}
+				urlInput={urlInput}
+				onUrlInputChange={setUrlInput}
+				isImporting={isUrlImporting}
+				onImport={handleUrlImport}
+			/>
 		</div>
+		</>
 	);
 }
 
@@ -433,7 +665,8 @@ function SavedSoundsView() {
 	}
 
 	return (
-		<div className="mt-1 flex h-full flex-col gap-5">
+		<div className="group relative mt-1 flex h-full flex-col gap-5">
+			<OpenInEditor source="src/components/editor/panels/assets/views/sounds.tsx" line={552} />
 			<div className="flex items-center justify-between">
 				<p className="text-muted-foreground text-sm">
 					{t("{{num}} saved {{noun}}", {
@@ -503,7 +736,261 @@ function SavedSoundsView() {
 
 function SongsView() {
 	const { t } = useTranslation();
-	return <div>{t("Songs")}</div>;
+	const {
+		userAudios,
+		isLoadingUserAudios,
+		userAudiosError,
+		loadUserAudios,
+		addUserAudio,
+		removeUserAudio,
+		addUserAudioToTimeline,
+	} = useSoundsStore();
+
+	const [playingId, setPlayingId] = useState<string | null>(null);
+	const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(
+		null,
+	);
+	const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
+	const [urlInput, setUrlInput] = useState("");
+	const [isUrlImporting, setIsUrlImporting] = useState(false);
+
+	useEffect(() => {
+		loadUserAudios();
+	}, [loadUserAudios]);
+
+	const processAudioFile = async (file: File) => {
+		try {
+			const arrayBuffer = await file.arrayBuffer();
+			const audioContext = new AudioContext();
+			const buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+			const userAudio: UserAudio = {
+				id: crypto.randomUUID(),
+				name: file.name,
+				source: "upload",
+				blob: file,
+				duration: buffer.duration,
+				createdAt: new Date().toISOString(),
+			};
+
+			await addUserAudio({ audio: userAudio });
+		} catch (error) {
+			console.error("Failed to process audio file:", error);
+			toast.error(t("Failed to process audio file"));
+		}
+	};
+
+	const { isDragOver, dragProps, openFilePicker, fileInputProps } =
+		useFileUpload({
+			accept: "audio/*",
+			multiple: false,
+			onFilesSelected: (files) => processAudioFile(files[0]),
+		});
+
+	const handleUrlImport = async () => {
+		const trimmedUrl = urlInput.trim();
+		if (!trimmedUrl) return;
+
+		try {
+			new URL(trimmedUrl);
+		} catch {
+			toast.error(t("Please enter a valid URL"));
+			return;
+		}
+
+		setIsUrlImporting(true);
+		try {
+			const response = await fetch(trimmedUrl);
+			if (!response.ok)
+				throw new Error(`Failed to fetch: ${response.statusText}`);
+			const arrayBuffer = await response.arrayBuffer();
+			const audioContext = new AudioContext();
+			const buffer = await audioContext.decodeAudioData(arrayBuffer);
+
+			const fileName = trimmedUrl.split("/").pop() || trimmedUrl;
+
+			const userAudio: UserAudio = {
+				id: crypto.randomUUID(),
+				name: fileName,
+				source: "url",
+				originalUrl: trimmedUrl,
+				blob: new Blob([arrayBuffer]),
+				duration: buffer.duration,
+				createdAt: new Date().toISOString(),
+			};
+
+			await addUserAudio({ audio: userAudio });
+			setIsUrlDialogOpen(false);
+			setUrlInput("");
+			toast.success(t("Audio imported successfully"));
+		} catch (error) {
+			console.error("Error importing from URL:", error);
+			toast.error(
+				error instanceof Error
+					? error.message
+					: t("Failed to import audio from URL"),
+			);
+		} finally {
+			setIsUrlImporting(false);
+		}
+	};
+
+	const playAudio = ({ audio }: { audio: UserAudio }) => {
+		if (playingId === audio.id) {
+			audioElement?.pause();
+			setPlayingId(null);
+			return;
+		}
+
+		audioElement?.pause();
+
+		const url =
+			audio.source === "upload" && audio.blob
+				? URL.createObjectURL(audio.blob)
+				: audio.originalUrl;
+
+		if (url) {
+			const audioEl = new Audio(url);
+			audioEl.addEventListener("ended", () => {
+				setPlayingId(null);
+			});
+			audioEl.addEventListener("error", () => {
+				setPlayingId(null);
+			});
+			audioEl.play().catch((error: DOMException) => {
+				if (error.name === "AbortError") return;
+				console.error("Failed to play audio:", error);
+				setPlayingId(null);
+			});
+
+			setAudioElement(audioEl);
+			setPlayingId(audio.id);
+		}
+	};
+
+	const formatDuration = (seconds: number) => {
+		const min = Math.floor(seconds / 60);
+		const sec = Math.floor(seconds % 60);
+		return `${min}:${sec.toString().padStart(2, "0")}`;
+	};
+
+	const formatTimestamp = (isoString: string) => {
+		const date = new Date(isoString);
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / 60000);
+		const diffHours = Math.floor(diffMs / 3600000);
+		const diffDays = Math.floor(diffMs / 86400000);
+
+		if (diffMins < 1) return t("Just now");
+		if (diffMins < 60) return t("{{num}} minute ago", { num: diffMins });
+		if (diffHours < 24) return t("{{num}} hour ago", { num: diffHours });
+		if (diffDays < 7) return t("{{num}} day ago", { num: diffDays });
+		return date.toLocaleDateString();
+	};
+
+	const handleDelete = ({ id }: { id: string }) => {
+		if (playingId === id) {
+			audioElement?.pause();
+			setPlayingId(null);
+		}
+		removeUserAudio({ id });
+	};
+
+	return (
+		<>
+			<input {...fileInputProps} />
+			<div
+				className={`group relative flex h-full flex-col gap-3 ${isDragOver ? "bg-accent/30" : ""}`}
+				{...dragProps}
+			>
+				<OpenInEditor source="src/components/editor/panels/assets/views/sounds.tsx" line={735} />
+				<div className="flex items-center">
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="gap-1.5">
+								<HugeiconsIcon icon={CloudUploadIcon} />
+								{t("Import")}
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="start">
+							<DropdownMenuItem
+								onClick={openFilePicker}
+								className="gap-2"
+							>
+								<HugeiconsIcon icon={ComputerIcon} className="size-4" />
+								{t("From Device")}
+							</DropdownMenuItem>
+							<DropdownMenuItem
+								onClick={() => setIsUrlDialogOpen(true)}
+								className="gap-2"
+							>
+								<HugeiconsIcon icon={Link04Icon} className="size-4" />
+								{t("From URL")}
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+
+				{isLoadingUserAudios ? (
+					<div className="flex h-full items-center justify-center">
+						<div className="text-muted-foreground text-sm">
+							{t("Loading...")}
+						</div>
+					</div>
+				) : userAudiosError ? (
+					<div className="flex h-full items-center justify-center">
+						<div className="text-destructive text-sm">
+							{t("Error: {{message}}", { message: userAudiosError })}
+						</div>
+					</div>
+				) : userAudios.length === 0 ? (
+					<div className="bg-background flex h-full flex-col items-center justify-center gap-3 p-4">
+						<HugeiconsIcon
+							icon={MusicNote03Icon}
+							className="text-muted-foreground size-10"
+						/>
+						<div className="flex flex-col gap-2 text-center">
+							<p className="text-lg font-medium">{t("No audio files")}</p>
+							<p className="text-muted-foreground text-sm text-balance">
+								{t(
+									"Upload audio files or import from a URL to use in your project",
+								)}
+							</p>
+						</div>
+					</div>
+				) : (
+					<div className="relative h-full overflow-hidden">
+						<ScrollArea className="h-full flex-1">
+							<div className="flex flex-col gap-4">
+								{userAudios.map((audio) => (
+									<UserAudioItem
+										key={audio.id}
+										audio={audio}
+										isPlaying={playingId === audio.id}
+										onPlay={playAudio}
+										onDelete={handleDelete}
+										onAddToTimeline={addUserAudioToTimeline}
+										formatDuration={formatDuration}
+										formatTimestamp={formatTimestamp}
+									/>
+								))}
+							</div>
+						</ScrollArea>
+					</div>
+				)}
+			</div>
+
+			<UrlImportDialog
+				open={isUrlDialogOpen}
+				onOpenChange={setIsUrlDialogOpen}
+				urlInput={urlInput}
+				onUrlInputChange={setUrlInput}
+				isImporting={isUrlImporting}
+				onImport={handleUrlImport}
+			/>
+		</>
+	);
 }
 
 interface AudioItemProps {
@@ -586,5 +1073,189 @@ function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+interface UrlImportDialogProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	urlInput: string;
+	onUrlInputChange: (value: string) => void;
+	isImporting: boolean;
+	onImport: () => void;
+}
+
+function UrlImportDialog({
+	open,
+	onOpenChange,
+	urlInput,
+	onUrlInputChange,
+	isImporting,
+	onImport,
+}: UrlImportDialogProps) {
+	const { t } = useTranslation();
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{t("Import from URL")}</DialogTitle>
+					<DialogDescription>
+						{t("Enter a URL to import an audio file.")}
+					</DialogDescription>
+				</DialogHeader>
+				<DialogBody>
+					<Input
+						placeholder={t("Enter audio URL")}
+						value={urlInput}
+						onChange={(event) => onUrlInputChange(event.target.value)}
+						onKeyDown={(event) => {
+							if (event.key === "Enter" && !isImporting) {
+								onImport();
+							}
+						}}
+						disabled={isImporting}
+					/>
+				</DialogBody>
+				<DialogFooter>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						disabled={isImporting}
+					>
+						{t("Cancel")}
+					</Button>
+					<Button
+						type="button"
+						onClick={onImport}
+						disabled={isImporting || !urlInput.trim()}
+					>
+						{isImporting ? t("Importing...") : t("Import")}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+interface UserAudioItemProps {
+	audio: UserAudio;
+	isPlaying: boolean;
+	onPlay: ({ audio }: { audio: UserAudio }) => void;
+	onDelete: ({ id }: { id: string }) => void;
+	onAddToTimeline: ({ audio }: { audio: UserAudio }) => Promise<boolean>;
+	formatDuration: (seconds: number) => string;
+	formatTimestamp: (isoString: string) => string;
+}
+
+function UserAudioItem({
+	audio,
+	isPlaying,
+	onPlay,
+	onDelete,
+	onAddToTimeline,
+	formatDuration,
+	formatTimestamp,
+}: UserAudioItemProps) {
+	const { t } = useTranslation();
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+	const handleClick = () => onPlay({ audio });
+
+	const handleAddToTimeline = (
+		event: React.MouseEvent<HTMLButtonElement>,
+	) => {
+		event.stopPropagation();
+		onAddToTimeline({ audio });
+	};
+
+	const handleDeleteClick = (
+		event: React.MouseEvent<HTMLButtonElement>,
+	) => {
+		event.stopPropagation();
+		setShowDeleteDialog(true);
+	};
+
+	return (
+		<>
+			<div className="group flex items-center gap-3 opacity-100 hover:opacity-75">
+				<button
+					type="button"
+					className="flex min-w-0 flex-1 items-center gap-3 text-left"
+					onClick={handleClick}
+				>
+					<div className="bg-accent relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md">
+						<div className="from-primary/20 absolute inset-0 bg-gradient-to-br to-transparent" />
+						{isPlaying ? (
+							<HugeiconsIcon icon={PauseIcon} className="size-5" />
+						) : (
+							<HugeiconsIcon icon={PlayIcon} className="size-5" />
+						)}
+					</div>
+
+					<div className="min-w-0 flex-1 overflow-hidden">
+						<p className="truncate text-sm font-medium">{audio.name}</p>
+						<span className="text-muted-foreground block truncate text-xs">
+							{audio.source === "url" && audio.originalUrl
+								? `${formatDuration(audio.duration)} · ${t("From URL")}`
+								: `${formatDuration(audio.duration)} · ${t("Uploaded")} ${formatTimestamp(audio.createdAt)}`}
+						</span>
+					</div>
+				</button>
+
+				<div className="flex items-center gap-3 pr-2">
+					<Button
+						variant="text"
+						size="icon"
+						className="text-muted-foreground hover:text-foreground w-auto !opacity-100"
+						onClick={handleAddToTimeline}
+						title={t("Add to timeline")}
+					>
+						<HugeiconsIcon icon={PlusSignIcon} />
+					</Button>
+					<Button
+						variant="text"
+						size="icon"
+						className="text-muted-foreground hover:text-destructive w-auto !opacity-100"
+						onClick={handleDeleteClick}
+						title={t("Delete")}
+					>
+						<HugeiconsIcon icon={Cancel01Icon} />
+					</Button>
+				</div>
+			</div>
+
+			<Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>{t("Delete audio?")}</DialogTitle>
+						<DialogDescription>
+							{t(
+								"This will permanently remove {{name}} from your collection.",
+								{ name: audio.name },
+							)}
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							variant="text"
+							onClick={() => setShowDeleteDialog(false)}
+						>
+							{t("Cancel")}
+						</Button>
+						<Button
+							variant="destructive"
+							onClick={() => {
+								onDelete({ id: audio.id });
+								setShowDeleteDialog(false);
+							}}
+						>
+							{t("Delete")}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</>
 	);
 }

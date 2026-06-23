@@ -21,6 +21,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { findAdjacentPairs } from "@/lib/timeline/transition-utils";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function TransitionsView() {
 	const { t } = useTranslation();
@@ -34,7 +35,8 @@ export function TransitionsView() {
 				);
 
 	return (
-		<div className="flex h-full flex-col">
+		<div className="group relative flex h-full flex-col">
+			<OpenInEditor source="src/components/editor/panels/assets/views/transitions.tsx" line={25} />
 			<div className="border-b px-4 pt-3 pb-2">
 				<h3 className="mb-2 text-sm font-medium">{t("Transitions")}</h3>
 				<p className="text-muted-foreground mb-2 text-xs">

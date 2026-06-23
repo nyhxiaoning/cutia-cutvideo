@@ -11,7 +11,7 @@ import type {
 	StorageStats,
 	ProjectStorageStats,
 } from "./types";
-import type { SavedSoundsData, SavedSound, SoundEffect } from "@/types/sounds";
+import type { SavedSoundsData, SavedSound, SoundEffect, UserAudio, UserAudioData } from "@/types/sounds";
 import {
 	migrations,
 	runStorageMigrations,
@@ -21,6 +21,7 @@ import type { TimelineTrack, TScene } from "@/types/timeline";
 class StorageService {
 	private projectsAdapter: IndexedDBAdapter<SerializedProject>;
 	private savedSoundsAdapter: IndexedDBAdapter<SavedSoundsData>;
+	private userAudiosAdapter: IndexedDBAdapter<UserAudioData>;
 	private config: StorageConfig;
 	private migrationsPromise: Promise<void> | null = null;
 
@@ -29,6 +30,7 @@ class StorageService {
 			projectsDb: "video-editor-projects",
 			mediaDb: "video-editor-media",
 			savedSoundsDb: "video-editor-saved-sounds",
+			userAudiosDb: "video-editor-user-audios",
 			version: 1,
 		};
 
@@ -41,6 +43,12 @@ class StorageService {
 		this.savedSoundsAdapter = new IndexedDBAdapter<SavedSoundsData>(
 			this.config.savedSoundsDb,
 			"saved-sounds",
+			this.config.version,
+		);
+
+		this.userAudiosAdapter = new IndexedDBAdapter<UserAudioData>(
+			this.config.userAudiosDb,
+			"user-audios",
 			this.config.version,
 		);
 	}
@@ -505,6 +513,44 @@ class StorageService {
 			await this.savedSoundsAdapter.remove("user-sounds");
 		} catch (error) {
 			console.error("Failed to clear saved sounds:", error);
+			throw error;
+		}
+	}
+
+	async loadUserAudios(): Promise<UserAudioData> {
+		try {
+			const data = await this.userAudiosAdapter.get("user-audios");
+			return data || { audios: [], lastModified: new Date().toISOString() };
+		} catch (error) {
+			console.error("Failed to load user audios:", error);
+			return { audios: [], lastModified: new Date().toISOString() };
+		}
+	}
+
+	async saveUserAudio({ audio }: { audio: UserAudio }): Promise<void> {
+		try {
+			const currentData = await this.loadUserAudios();
+			const updatedData: UserAudioData = {
+				audios: [...currentData.audios, audio],
+				lastModified: new Date().toISOString(),
+			};
+			await this.userAudiosAdapter.set("user-audios", updatedData);
+		} catch (error) {
+			console.error("Failed to save user audio:", error);
+			throw error;
+		}
+	}
+
+	async removeUserAudio({ id }: { id: string }): Promise<void> {
+		try {
+			const currentData = await this.loadUserAudios();
+			const updatedData: UserAudioData = {
+				audios: currentData.audios.filter((audio) => audio.id !== id),
+				lastModified: new Date().toISOString(),
+			};
+			await this.userAudiosAdapter.set("user-audios", updatedData);
+		} catch (error) {
+			console.error("Failed to remove user audio:", error);
 			throw error;
 		}
 	}

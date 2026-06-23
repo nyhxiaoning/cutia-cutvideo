@@ -38,9 +38,15 @@ import {
 import { isDevPlaceholderAvailable } from "@/lib/ai/placeholder";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function SettingsView() {
-	return <ProjectSettingsTabs />;
+	return (
+		<div className="group relative">
+			<OpenInEditor source="src/components/editor/panels/assets/views/settings.tsx" line={42} />
+			<ProjectSettingsTabs />
+		</div>
+	);
 }
 
 function ProjectSettingsTabs() {

@@ -37,3 +37,18 @@ export interface SavedSoundsData {
 	sounds: SavedSound[];
 	lastModified: string;
 }
+
+export interface UserAudio {
+	id: string;
+	name: string;
+	source: "upload" | "url";
+	originalUrl?: string;
+	blob?: Blob;
+	duration: number;
+	createdAt: string;
+}
+
+export interface UserAudioData {
+	audios: UserAudio[];
+	lastModified: string;
+}

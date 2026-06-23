@@ -33,6 +33,7 @@ import { useMediaPreviewStore } from "@/stores/media-preview-store";
 import type { MediaAsset } from "@/types/assets";
 import { cn } from "@/utils/ui";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 function usePreviewSize() {
 	const editor = useEditor();
@@ -91,10 +92,11 @@ export function PreviewPanel() {
 		<div
 			ref={containerRef}
 			className={cn(
-				"panel bg-background relative flex h-full min-h-0 w-full min-w-0 flex-col rounded-sm border",
+				"group panel bg-background relative flex h-full min-h-0 w-full min-w-0 flex-col rounded-sm border",
 				isFullscreen && "bg-background",
 			)}
 		>
+			<OpenInEditor source="src/components/editor/panels/preview/index.tsx" line={73} />
 			{selectedAsset ? (
 				<>
 					<PreviewHeader

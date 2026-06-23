@@ -57,6 +57,7 @@ import { invokeAction } from "@/lib/actions";
 import { useTrackReorder } from "@/hooks/timeline/use-track-reorder";
 import { cn } from "@/utils/ui";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function Timeline() {
 	const { t } = useTranslation();
@@ -210,11 +211,12 @@ export function Timeline() {
 	return (
 		<section
 			className={
-				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
+				"group panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
 			}
 			{...dragProps}
 			aria-label="Timeline"
 		>
+			<OpenInEditor source="src/components/editor/panels/timeline/index.tsx" line={61} />
 			<TimelineToolbar
 				zoomLevel={zoomLevel}
 				minZoom={minZoomLevel}

@@ -11,6 +11,7 @@ import { SoundsView } from "./views/sounds";
 import { StickersView } from "./views/stickers";
 import { TextView } from "./views/text";
 import { TransitionsView } from "./views/transitions";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function AssetsPanel() {
 	const { activeTab } = useAssetsPanelStore();
@@ -42,7 +43,8 @@ export function AssetsPanel() {
 	};
 
 	return (
-		<div className="panel bg-background flex h-full rounded-sm border overflow-hidden">
+		<div className="group panel bg-background flex h-full rounded-sm border overflow-hidden">
+			<OpenInEditor source="src/components/editor/panels/assets/index.tsx" line={16} />
 			<TabBar />
 			<Separator orientation="vertical" />
 			<div className="flex-1 overflow-hidden">{viewMap[activeTab]}</div>

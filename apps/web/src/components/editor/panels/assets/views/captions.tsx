@@ -32,6 +32,7 @@ import { buildCaptionChunks } from "@/lib/transcription/caption";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function Captions() {
 	const { t } = useTranslation();
@@ -171,7 +172,9 @@ export function Captions() {
 	};
 
 	return (
-		<BaseView
+		<div className="group relative">
+			<OpenInEditor source="src/components/editor/panels/assets/views/captions.tsx" line={36} />
+			<BaseView
 			ref={containerRef}
 			className="flex h-full flex-col justify-between"
 		>
@@ -297,5 +300,6 @@ export function Captions() {
 				</Button>
 			</div>
 		</BaseView>
+		</div>
 	);
 }

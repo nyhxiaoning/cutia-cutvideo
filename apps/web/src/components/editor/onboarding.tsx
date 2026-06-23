@@ -8,6 +8,7 @@ import { SOCIAL_LINKS } from "@/constants/site-constants";
 import { useLocalStorage } from "@/hooks/storage/use-local-storage";
 import { Button } from "../ui/button";
 import { Dialog, DialogBody, DialogContent, DialogTitle } from "../ui/dialog";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function Onboarding() {
 	const { t } = useTranslation();
@@ -83,7 +84,8 @@ export function Onboarding() {
 
 	return (
 		<Dialog open={isOpen} onOpenChange={handleClose}>
-			<DialogContent className="sm:max-w-[425px]">
+			<DialogContent className="group sm:max-w-[425px]">
+				<OpenInEditor source="src/components/editor/onboarding.tsx" line={12} />
 				<DialogTitle>
 					<span className="sr-only">{getStepTitle()}</span>
 				</DialogTitle>

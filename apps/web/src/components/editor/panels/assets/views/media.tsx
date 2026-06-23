@@ -64,6 +64,7 @@ import {
 	ComputerIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function MediaView() {
 	const { t } = useTranslation();
@@ -284,9 +285,10 @@ export function MediaView() {
 			<input {...fileInputProps} />
 
 			<div
-				className={`relative flex h-full flex-col gap-1 ${isDragOver ? "bg-accent/30" : ""}`}
+				className={`group relative flex h-full flex-col gap-1 ${isDragOver ? "bg-accent/30" : ""}`}
 				{...dragProps}
 			>
+				<OpenInEditor source="src/components/editor/panels/assets/views/media.tsx" line={68} />
 				<div className="bg-background h-12 px-4 pr-2 flex items-center justify-between border-b">
 					<span className="text-muted-foreground text-sm">{t("Assets")}</span>
 					<div className="flex items-center gap-0">

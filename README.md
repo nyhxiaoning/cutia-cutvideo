@@ -1,5 +1,7 @@
 # Cutia
 
+## 环境准备：bun2.10.0
+
 <p>
   Privacy-first, open-source video editing.<br />
   Build, trim, layer, and export directly from your browser.

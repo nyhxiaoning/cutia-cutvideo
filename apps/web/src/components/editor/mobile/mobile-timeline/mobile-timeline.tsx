@@ -9,6 +9,7 @@ import { useMobileDrawerStore } from "../hooks/use-mobile-drawer";
 import { MobileTrack } from "./mobile-track";
 import { MobilePlayhead } from "./mobile-playhead";
 import { cn } from "@/utils/ui";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 const TIMELINE_HEIGHT = 180;
 const CONTENT_END_PADDING_SECONDS = 2;
@@ -92,12 +93,13 @@ export function MobileTimeline() {
 		<section
 			ref={containerRef}
 			className={cn(
-				"bg-background relative overflow-hidden border-t",
+				"group bg-background relative overflow-hidden border-t",
 				"touch-none select-none",
 			)}
 			style={{ height: TIMELINE_HEIGHT }}
 			aria-label="Timeline"
 		>
+			<OpenInEditor source="src/components/editor/mobile/mobile-timeline/mobile-timeline.tsx" line={16} />
 			{/* Scrollable content layer */}
 			<div
 				ref={contentRef}

@@ -23,6 +23,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
+import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function MobileHeader() {
 	const { t } = useTranslation();
@@ -67,7 +68,8 @@ export function MobileHeader() {
 	};
 
 	return (
-		<header className="bg-background flex h-11 items-center justify-between border-b px-2 pt-[env(safe-area-inset-top)]">
+		<header className="group relative bg-background flex h-11 items-center justify-between border-b px-2 pt-[env(safe-area-inset-top)]">
+			<OpenInEditor source="src/components/editor/mobile/mobile-header.tsx" line={27} />
 			<div className="flex items-center gap-1 min-w-0">
 				<Button
 					type="button"
