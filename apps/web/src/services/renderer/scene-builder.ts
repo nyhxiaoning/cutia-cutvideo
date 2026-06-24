@@ -13,6 +13,7 @@ import { StickerNode } from "./nodes/sticker-node";
 import { ColorNode } from "./nodes/color-node";
 import { BlurBackgroundNode } from "./nodes/blur-background-node";
 import { TransitionNode } from "./nodes/transition-node";
+import { OverlayNode } from "./nodes/overlay-node";
 import type { BaseNode } from "./nodes/base-node";
 import type { TBackground, TCanvasSize } from "@/types/project";
 import { DEFAULT_BLUR_INTENSITY } from "@/constants/project-constants";
@@ -53,6 +54,7 @@ function buildVisualElementNode({
 			opacity: element.opacity,
 			playbackRate: videoElement.playbackRate,
 			reversed: videoElement.reversed,
+			filter: videoElement.filter,
 		});
 	}
 
@@ -65,6 +67,7 @@ function buildVisualElementNode({
 			trimEnd: element.trimEnd,
 			transform: element.transform,
 			opacity: element.opacity,
+			filter: (element as ImageElement).filter,
 		});
 	}
 
@@ -202,6 +205,23 @@ export function buildScene(params: BuildSceneParams) {
 						transform: element.transform,
 						opacity: element.opacity,
 						color: element.color,
+					}),
+				);
+			}
+
+			if (element.type === "overlay") {
+				contentNodes.push(
+					new OverlayNode({
+						params: {
+							type: element.overlayType,
+							density: element.density,
+							speed: element.speed,
+							opacity: element.overlayOpacity,
+							wind: element.wind,
+							intensity: element.intensity,
+						},
+						duration: element.duration,
+						timeOffset: element.startTime,
 					}),
 				);
 			}

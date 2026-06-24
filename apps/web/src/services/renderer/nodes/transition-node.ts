@@ -182,6 +182,18 @@ function applyTransition({
 		case "zoom-out":
 			applyZoom({ context, ...source, width, height, progress, direction: "out" });
 			break;
+		case "push-left":
+			applyPush({ context, ...source, width, height, progress, direction: "left" });
+			break;
+		case "push-right":
+			applyPush({ context, ...source, width, height, progress, direction: "right" });
+			break;
+		case "flash-black":
+			applyFlashBlack({ context, ...source, width, height, progress });
+			break;
+		case "blur-dissolve":
+			applyBlurDissolve({ context, ...source, width, height, progress });
+			break;
 		default:
 			applyFade({ context, ...source, width, height, progress });
 	}
@@ -334,6 +346,114 @@ function applyZoom({
 		context.drawImage(canvasA as CanvasImageSource, 0, 0, width, height);
 		context.globalAlpha = progress;
 		context.drawImage(canvasB as CanvasImageSource, offsetX, offsetY, scaledWidth, scaledHeight);
+	}
+
+	context.restore();
+}
+
+/**
+ * Push transition: incoming pushes outgoing off screen.
+ * direction "left" = incoming slides in from right, pushing outgoing out to the left.
+ * direction "right" = incoming slides in from left, pushing outgoing out to the right.
+ */
+function applyPush({
+	context,
+	canvasA,
+	canvasB,
+	width,
+	height,
+	progress,
+	direction,
+}: TransitionContext & { direction: "left" | "right" }): void {
+	context.save();
+
+	const offsetX = direction === "left" ? -width * progress : width * progress;
+
+	// Outgoing moves off screen in opposite direction
+	context.drawImage(canvasA as CanvasImageSource, offsetX, 0, width, height);
+
+	// Incoming follows from the opposite side
+	const incomingOffsetX = direction === "left" ? width + offsetX : -width + offsetX;
+	context.drawImage(canvasB as CanvasImageSource, incomingOffsetX, 0, width, height);
+
+	context.restore();
+}
+
+/**
+ * Flash Black transition: screen flashes to black, then fades in next clip.
+ * First half: fade outgoing to black (progress 0-0.5)
+ * Second half: fade from black to incoming (progress 0.5-1)
+ */
+function applyFlashBlack({
+	context,
+	canvasA,
+	canvasB,
+	width,
+	height,
+	progress,
+}: TransitionContext): void {
+	context.save();
+
+	if (progress < 0.5) {
+		// Fade outgoing to black
+		const blackAlpha = progress * 2; // 0 -> 1 in first half
+		context.drawImage(canvasA as CanvasImageSource, 0, 0, width, height);
+		context.fillStyle = `rgba(0, 0, 0, ${blackAlpha})`;
+		context.fillRect(0, 0, width, height);
+	} else {
+		// Fade from black to incoming
+		const blackAlpha = 1 - (progress - 0.5) * 2; // 1 -> 0 in second half
+		context.drawImage(canvasB as CanvasImageSource, 0, 0, width, height);
+		context.fillStyle = `rgba(0, 0, 0, ${blackAlpha})`;
+		context.fillRect(0, 0, width, height);
+	}
+
+	context.restore();
+}
+
+/**
+ * Blur Dissolve transition: increasing blur on outgoing, then incoming fades in.
+ * progress 0-0.5: blur outgoing up to max
+ * progress 0.5-1: dissolve from blurred outgoing to incoming
+ */
+function applyBlurDissolve({
+	context,
+	canvasA,
+	canvasB,
+	width,
+	height,
+	progress,
+}: TransitionContext): void {
+	context.save();
+
+	const maxBlur = 10;
+	const eased = progress * progress * (3 - 2 * progress);
+
+	if (progress < 0.5) {
+		// Blur outgoing increasingly, then fade
+		const blurAmount = Math.min(eased * maxBlur * 2, maxBlur);
+		context.filter = `blur(${blurAmount}px)`;
+		context.drawImage(canvasA as CanvasImageSource, 0, 0, width, height);
+	} else {
+		// Cross-fade from blurred outgoing to incoming
+		const dissolveProgress = (progress - 0.5) * 2;
+		const blurAmount = Math.max((1 - dissolveProgress) * maxBlur, 0);
+
+		if (blurAmount > 1) {
+			context.filter = `blur(${blurAmount}px)`;
+			context.drawImage(canvasA as CanvasImageSource, 0, 0, width, height);
+
+			context.filter = "none";
+			context.globalAlpha = dissolveProgress;
+			context.drawImage(canvasB as CanvasImageSource, 0, 0, width, height);
+		} else {
+			context.filter = "none";
+			context.globalAlpha = 1 - dissolveProgress * 0.5;
+			context.drawImage(canvasA as CanvasImageSource, 0, 0, width, height);
+
+			context.globalAlpha = dissolveProgress;
+			context.drawImage(canvasB as CanvasImageSource, 0, 0, width, height);
+		}
 	}
 
 	context.restore();

@@ -3,7 +3,7 @@ import type { TransitionType } from "@/types/timeline";
 export interface TransitionPreset {
 	type: TransitionType;
 	label: string;
-	category: "fade" | "wipe" | "slide" | "zoom";
+	category: "fade" | "wipe" | "slide" | "zoom" | "push" | "flash" | "blur";
 }
 
 export const TRANSITION_PRESETS: TransitionPreset[] = [
@@ -19,11 +19,23 @@ export const TRANSITION_PRESETS: TransitionPreset[] = [
 	{ type: "slide-down", label: "Slide Down", category: "slide" },
 	{ type: "zoom-in", label: "Zoom In", category: "zoom" },
 	{ type: "zoom-out", label: "Zoom Out", category: "zoom" },
+	{ type: "push-left", label: "Push Left", category: "push" },
+	{ type: "push-right", label: "Push Right", category: "push" },
+	{ type: "flash-black", label: "Flash Black", category: "flash" },
+	{ type: "blur-dissolve", label: "Blur Dissolve", category: "blur" },
 ];
 
 export const DEFAULT_TRANSITION_DURATION = 0.5;
 
-export const TRANSITION_CATEGORIES = ["fade", "wipe", "slide", "zoom"] as const;
+export const TRANSITION_CATEGORIES = [
+	"fade",
+	"wipe",
+	"slide",
+	"zoom",
+	"push",
+	"flash",
+	"blur",
+] as const;
 
 export const TRANSITION_CATEGORY_LABELS: Record<
 	(typeof TRANSITION_CATEGORIES)[number],
@@ -33,4 +45,7 @@ export const TRANSITION_CATEGORY_LABELS: Record<
 	wipe: "Wipe",
 	slide: "Slide",
 	zoom: "Zoom",
+	push: "Push",
+	flash: "Flash",
+	blur: "Blur",
 };

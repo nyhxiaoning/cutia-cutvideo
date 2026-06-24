@@ -226,6 +226,61 @@ function TransitionIcon({ type }: { type: TransitionType }) {
 		);
 	}
 
+	if (type.startsWith("push-")) {
+		const direction = type.replace("push-", "");
+		return (
+			<svg viewBox="0 0 60 30" className={baseClass} role="img" aria-label={label}>
+				<title>{label}</title>
+				<rect x="2" y="2" width="26" height="26" rx="2" fill="hsl(var(--primary))" />
+				<rect x="32" y="2" width="26" height="26" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.3" />
+				<path
+					d={getPushArrowPath({ direction })}
+					fill="none"
+					stroke="hsl(var(--foreground))"
+					strokeWidth="1.5"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
+				<path
+					d={getPushOutPath({ direction })}
+					fill="none"
+					stroke="hsl(var(--foreground))"
+					strokeWidth="1"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeDasharray="2 2"
+				/>
+			</svg>
+		);
+	}
+
+	if (type === "flash-black") {
+		return (
+			<svg viewBox="0 0 60 30" className={baseClass} role="img" aria-label={label}>
+				<title>{label}</title>
+				<rect x="2" y="2" width="26" height="26" rx="2" fill="hsl(var(--primary))" opacity="0.5" />
+				<rect x="15" y="8" width="30" height="14" rx="2" fill="#111" />
+				<rect x="32" y="2" width="26" height="26" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.3" />
+			</svg>
+		);
+	}
+
+	if (type === "blur-dissolve") {
+		return (
+			<svg viewBox="0 0 60 30" className={baseClass} role="img" aria-label={label}>
+				<title>{label}</title>
+				<defs>
+					<filter id="blur-icon-filter">
+						<feGaussianBlur stdDeviation="1.5" />
+					</filter>
+				</defs>
+				<rect x="0" y="2" width="28" height="26" rx="2" fill="hsl(var(--primary))" opacity="0.4" filter="url(#blur-icon-filter)" />
+				<rect x="32" y="2" width="28" height="26" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.3" />
+				<text x="30" y="20" textAnchor="middle" fontSize="8" fill="hsl(var(--foreground))">~</text>
+			</svg>
+		);
+	}
+
 	return (
 		<svg viewBox="0 0 60 30" className={baseClass} role="img" aria-label={label}>
 			<title>{label}</title>
@@ -233,6 +288,28 @@ function TransitionIcon({ type }: { type: TransitionType }) {
 			<rect x="32" y="2" width="26" height="26" rx="2" fill="hsl(var(--muted-foreground))" opacity="0.3" />
 		</svg>
 	);
+}
+
+function getPushArrowPath({ direction }: { direction: string }): string {
+	switch (direction) {
+		case "left":
+			return "M28 15 L35 15 M32 11 L35 15 L32 19";
+		case "right":
+			return "M32 15 L25 15 M28 11 L25 15 L28 19";
+		default:
+			return "M28 15 L35 15 M32 11 L35 15 L32 19";
+	}
+}
+
+function getPushOutPath({ direction }: { direction: string }): string {
+	switch (direction) {
+		case "left":
+			return "M-2 15 L-8 15 M-5 11 L-8 15 L-5 19";
+		case "right":
+			return "M62 15 L68 15 M65 11 L68 15 L65 19";
+		default:
+			return "M-2 15 L-8 15 M-5 11 L-8 15 L-5 19";
+	}
 }
 
 function getArrowPath({ direction }: { direction: string }): string {

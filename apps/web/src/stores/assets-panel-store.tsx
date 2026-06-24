@@ -12,6 +12,7 @@ import {
 	Settings01Icon,
 	SlidersHorizontalIcon,
 	ColorsIcon,
+	CloudAngledRainIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
@@ -24,6 +25,7 @@ export const TAB_KEYS = [
 	"transitions",
 	"captions",
 	"filters",
+	"overlays",
 	"adjustment",
 	"ai",
 	"settings",
@@ -46,6 +48,7 @@ const TAB_LABELS: Record<Tab, string> = {
 	transitions: "Transitions",
 	captions: "Captions",
 	filters: "Filters",
+	overlays: "Overlays",
 	adjustment: "Adjustment",
 	ai: "AI",
 	settings: "Settings",
@@ -83,6 +86,10 @@ export const tabs = {
 	filters: {
 		icon: createHugeiconsIcon({ icon: ColorsIcon }),
 		label: TAB_LABELS.filters,
+	},
+	overlays: {
+		icon: createHugeiconsIcon({ icon: CloudAngledRainIcon }),
+		label: TAB_LABELS.overlays,
 	},
 	adjustment: {
 		icon: createHugeiconsIcon({ icon: SlidersHorizontalIcon }),

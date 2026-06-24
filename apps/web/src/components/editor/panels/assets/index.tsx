@@ -11,6 +11,9 @@ import { SoundsView } from "./views/sounds";
 import { StickersView } from "./views/stickers";
 import { TextView } from "./views/text";
 import { TransitionsView } from "./views/transitions";
+import { EffectsView } from "./views/effects";
+import { FiltersView } from "./views/filters";
+import { OverlaysView } from "./views/overlays";
 import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function AssetsPanel() {
@@ -21,18 +24,11 @@ export function AssetsPanel() {
 		sounds: <SoundsView />,
 		text: <TextView />,
 		stickers: <StickersView />,
-		effects: (
-			<div className="text-muted-foreground p-4">
-				Effects view coming soon...
-			</div>
-		),
+		effects: <EffectsView />,
 		transitions: <TransitionsView />,
 		captions: <Captions />,
-		filters: (
-			<div className="text-muted-foreground p-4">
-				Filters view coming soon...
-			</div>
-		),
+		filters: <FiltersView />,
+		overlays: <OverlaysView />,
 		adjustment: (
 			<div className="text-muted-foreground p-4">
 				Adjustment view coming soon...

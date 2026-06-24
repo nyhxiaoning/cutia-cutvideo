@@ -466,6 +466,14 @@ function ElementContent({
 		);
 	}
 
+	if (element.type === "overlay") {
+		return (
+			<span className="text-foreground/80 truncate text-xs">
+				{element.name}
+			</span>
+		);
+	}
+
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
 	if (!mediaAsset) {
 		return (

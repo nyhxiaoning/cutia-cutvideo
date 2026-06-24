@@ -6,6 +6,7 @@ import type {
 	AudioTrack,
 	StickerTrack,
 	TextTrack,
+	OverlayTrack,
 	TimelineElement,
 } from "@/types/timeline";
 import {
@@ -23,7 +24,7 @@ export function canTracktHaveAudio(
 
 export function canTrackBeHidden(
 	track: TimelineTrack,
-): track is VideoTrack | TextTrack | StickerTrack {
+): track is VideoTrack | TextTrack | StickerTrack | OverlayTrack {
 	return track.type !== "audio";
 }
 
@@ -113,6 +114,14 @@ export function buildEmptyTrack({
 				id,
 				name: trackName,
 				type: "sticker",
+				elements: [],
+				hidden: false,
+			};
+		case "overlay":
+			return {
+				id,
+				name: trackName,
+				type: "overlay",
 				elements: [],
 				hidden: false,
 			};
@@ -216,6 +225,7 @@ export function canElementGoOnTrack({
 	if (elementType === "text") return trackType === "text";
 	if (elementType === "audio") return trackType === "audio";
 	if (elementType === "sticker") return trackType === "sticker";
+	if (elementType === "overlay") return trackType === "overlay";
 	if (elementType === "video" || elementType === "image") {
 		return trackType === "video";
 	}

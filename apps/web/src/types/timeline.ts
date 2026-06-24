@@ -8,7 +8,7 @@ export interface TScene {
 	updatedAt: Date;
 }
 
-export type TrackType = "video" | "text" | "audio" | "sticker";
+export type TrackType = "video" | "text" | "audio" | "sticker" | "overlay";
 
 interface BaseTrack {
 	id: string;
@@ -42,7 +42,13 @@ export interface StickerTrack extends BaseTrack {
 	hidden: boolean;
 }
 
-export type TimelineTrack = VideoTrack | TextTrack | AudioTrack | StickerTrack;
+export interface OverlayTrack extends BaseTrack {
+	type: "overlay";
+	elements: OverlayElement[];
+	hidden: boolean;
+}
+
+export type TimelineTrack = VideoTrack | TextTrack | AudioTrack | StickerTrack | OverlayTrack;
 
 export interface Transform {
 	scale: number;
@@ -69,7 +75,11 @@ export type TransitionType =
 	| "slide-up"
 	| "slide-down"
 	| "zoom-in"
-	| "zoom-out";
+	| "zoom-out"
+	| "push-left"
+	| "push-right"
+	| "flash-black"
+	| "blur-dissolve";
 
 export interface TrackTransition {
 	id: string;
@@ -117,6 +127,7 @@ export interface VideoElement extends BaseTimelineElement {
 	opacity: number;
 	playbackRate?: number;
 	reversed?: boolean;
+	filter?: string;
 }
 
 export interface ImageElement extends BaseTimelineElement {
@@ -125,6 +136,7 @@ export interface ImageElement extends BaseTimelineElement {
 	hidden?: boolean;
 	transform: Transform;
 	opacity: number;
+	filter?: string;
 }
 
 export interface TextStroke {
@@ -171,12 +183,34 @@ export interface StickerElement extends BaseTimelineElement {
 	color?: string;
 }
 
+export interface OverlayElement extends BaseTimelineElement {
+	type: "overlay";
+	overlayType:
+		| "rain"
+		| "snow"
+		| "sparkle"
+		| "fire"
+		| "smoke"
+		| "firefly"
+		| "bubble"
+		| "confetti"
+		| "shake";
+	density: number;
+	speed: number;
+	overlayOpacity: number;
+	wind?: number;
+	/** Used by shake overlay: intensity of shake in pixels */
+	intensity?: number;
+	hidden?: boolean;
+}
+
 export type TimelineElement =
 	| AudioElement
 	| VideoElement
 	| ImageElement
 	| TextElement
-	| StickerElement;
+	| StickerElement
+	| OverlayElement;
 
 export type ElementType = TimelineElement["type"];
 
@@ -189,12 +223,14 @@ export type CreateVideoElement = Omit<VideoElement, "id">;
 export type CreateImageElement = Omit<ImageElement, "id">;
 export type CreateTextElement = Omit<TextElement, "id">;
 export type CreateStickerElement = Omit<StickerElement, "id">;
+export type CreateOverlayElement = Omit<OverlayElement, "id">;
 export type CreateTimelineElement =
 	| CreateAudioElement
 	| CreateVideoElement
 	| CreateImageElement
 	| CreateTextElement
-	| CreateStickerElement;
+	| CreateStickerElement
+	| CreateOverlayElement;
 
 // ---- Drag State ----
 
