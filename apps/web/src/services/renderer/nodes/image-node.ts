@@ -47,6 +47,7 @@ export class ImageNode extends VisualNode<ImageNodeParams> {
 			source: this.image,
 			sourceWidth: mediaW,
 			sourceHeight: mediaH,
+			elementLocalTime: time - this.params.timeOffset,
 		});
 	}
 }

@@ -14,6 +14,7 @@ export interface VisualNodeParams {
 	playbackRate?: number;
 	reversed?: boolean;
 	filter?: string;
+	filterRange?: { start: number; end: number };
 }
 
 export abstract class VisualNode<
@@ -42,17 +43,26 @@ export abstract class VisualNode<
 		source,
 		sourceWidth,
 		sourceHeight,
+		elementLocalTime,
 	}: {
 		renderer: CanvasRenderer;
 		source: CanvasImageSource;
 		sourceWidth: number;
 		sourceHeight: number;
+		elementLocalTime?: number;
 	}): void {
 		renderer.context.save();
 
-		const { transform, opacity, filter } = this.params;
+		const { transform, opacity, filter, filterRange } = this.params;
 		if (filter) {
-			renderer.context.filter = filter;
+			const isInFilterRange =
+				!filterRange ||
+				(elementLocalTime !== undefined &&
+					elementLocalTime >= filterRange.start &&
+					elementLocalTime < filterRange.end);
+			if (isInFilterRange) {
+				renderer.context.filter = filter;
+			}
 		}
 		const containScale = Math.min(
 			renderer.width / sourceWidth,

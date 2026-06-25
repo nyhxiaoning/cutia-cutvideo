@@ -55,6 +55,7 @@ function buildVisualElementNode({
 			playbackRate: videoElement.playbackRate,
 			reversed: videoElement.reversed,
 			filter: videoElement.filter,
+			filterRange: videoElement.filterRange,
 		});
 	}
 
@@ -68,6 +69,7 @@ function buildVisualElementNode({
 			transform: element.transform,
 			opacity: element.opacity,
 			filter: (element as ImageElement).filter,
+			filterRange: (element as ImageElement).filterRange,
 		});
 	}
 

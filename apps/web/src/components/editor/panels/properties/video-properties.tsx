@@ -33,6 +33,8 @@ export function VideoProperties({
 	const isEditingRotation = useRef(false);
 	const isEditingOpacity = useRef(false);
 	const isEditingSpeed = useRef(false);
+	const isEditingFilterStart = useRef(false);
+	const isEditingFilterEnd = useRef(false);
 
 	const scaleDraft = useRef("");
 	const posXDraft = useRef("");
@@ -40,6 +42,8 @@ export function VideoProperties({
 	const rotationDraft = useRef("");
 	const opacityDraft = useRef("");
 	const speedDraft = useRef("");
+	const filterStartDraft = useRef("");
+	const filterEndDraft = useRef("");
 
 	const initialScaleRef = useRef<number | null>(null);
 	const initialPosXRef = useRef<number | null>(null);
@@ -47,6 +51,8 @@ export function VideoProperties({
 	const initialRotationRef = useRef<number | null>(null);
 	const initialOpacityRef = useRef<number | null>(null);
 	const initialSpeedRef = useRef<number | null>(null);
+	const initialFilterStartRef = useRef<number | null>(null);
+	const initialFilterEndRef = useRef<number | null>(null);
 
 	const scalePercent = Math.round(element.transform.scale * 100);
 	const scaleDisplay = isEditingScale.current
@@ -72,6 +78,17 @@ export function VideoProperties({
 	const speedDisplay = isEditingSpeed.current
 		? speedDraft.current
 		: formatSpeedLabel({ rate: currentSpeed });
+
+	const currentFilterRange = element.filterRange ?? {
+		start: 0,
+		end: element.duration,
+	};
+	const filterStartDisplay = isEditingFilterStart.current
+		? filterStartDraft.current
+		: currentFilterRange.start.toString();
+	const filterEndDisplay = isEditingFilterEnd.current
+		? filterEndDraft.current
+		: currentFilterRange.end.toString();
 
 	const applySpeedChange = ({
 		newRate,
@@ -546,10 +563,10 @@ export function VideoProperties({
 				</PropertyGroup>
 
 				{isVideoElement && (
-<PropertyGroup title={t("Speed")} collapsible={false}>
-								<div className="space-y-6">
-									<PropertyItem direction="column">
-										<PropertyItemLabel>{t("Playback Speed")}</PropertyItemLabel>
+					<PropertyGroup title={t("Speed")} collapsible={false}>
+						<div className="space-y-6">
+							<PropertyItem direction="column">
+								<PropertyItemLabel>{t("Playback Speed")}</PropertyItemLabel>
 								<PropertyItemValue>
 									<div className="flex flex-wrap gap-1.5">
 										{SPEED_PRESETS.map((preset) => {
@@ -649,7 +666,175 @@ export function VideoProperties({
 						</div>
 					</PropertyGroup>
 				)}
-				</PanelBaseView>
+
+				{element.filter && (
+					<PropertyGroup title={t("Filter Range")} collapsible={false}>
+						<div className="space-y-4">
+							<PropertyItem>
+								<PropertyItemLabel>{t("Start")} (s)</PropertyItemLabel>
+								<PropertyItemValue>
+									<Input
+										type="number"
+										value={filterStartDisplay}
+										min={0}
+										max={element.duration}
+										step={0.1}
+										onFocus={() => {
+											isEditingFilterStart.current = true;
+											filterStartDraft.current = currentFilterRange.start.toString();
+											forceRender();
+										}}
+										onChange={(e) => {
+											filterStartDraft.current = e.target.value;
+											forceRender();
+											if (initialFilterStartRef.current === null) {
+												initialFilterStartRef.current = currentFilterRange.start;
+											}
+											const parsed = Number.parseFloat(e.target.value);
+											if (!Number.isNaN(parsed)) {
+												const clamped = clamp({ value: parsed, min: 0, max: element.duration });
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: clamped,
+																end: currentFilterRange.end,
+															},
+														},
+													}],
+													pushHistory: false,
+												});
+											}
+										}}
+										onBlur={() => {
+											if (initialFilterStartRef.current !== null) {
+												const parsed = Number.parseFloat(filterStartDraft.current);
+												const value = Number.isNaN(parsed)
+													? currentFilterRange.start
+													: clamp({ value: parsed, min: 0, max: element.duration });
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: initialFilterStartRef.current,
+																end: currentFilterRange.end,
+															},
+														},
+													}],
+													pushHistory: false,
+												});
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: value,
+																end: currentFilterRange.end,
+															},
+														},
+													}],
+													pushHistory: true,
+												});
+												initialFilterStartRef.current = null;
+											}
+											isEditingFilterStart.current = false;
+											filterStartDraft.current = "";
+											forceRender();
+										}}
+										className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+									/>
+								</PropertyItemValue>
+							</PropertyItem>
+
+							<PropertyItem>
+								<PropertyItemLabel>{t("End")} (s)</PropertyItemLabel>
+								<PropertyItemValue>
+									<Input
+										type="number"
+										value={filterEndDisplay}
+										min={0}
+										max={element.duration}
+										step={0.1}
+										onFocus={() => {
+											isEditingFilterEnd.current = true;
+											filterEndDraft.current = currentFilterRange.end.toString();
+											forceRender();
+										}}
+										onChange={(e) => {
+											filterEndDraft.current = e.target.value;
+											forceRender();
+											if (initialFilterEndRef.current === null) {
+												initialFilterEndRef.current = currentFilterRange.end;
+											}
+											const parsed = Number.parseFloat(e.target.value);
+											if (!Number.isNaN(parsed)) {
+												const clamped = clamp({ value: parsed, min: 0, max: element.duration });
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: currentFilterRange.start,
+																end: clamped,
+															},
+														},
+													}],
+													pushHistory: false,
+												});
+											}
+										}}
+										onBlur={() => {
+											if (initialFilterEndRef.current !== null) {
+												const parsed = Number.parseFloat(filterEndDraft.current);
+												const value = Number.isNaN(parsed)
+													? currentFilterRange.end
+													: clamp({ value: parsed, min: 0, max: element.duration });
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: currentFilterRange.start,
+																end: initialFilterEndRef.current,
+															},
+														},
+													}],
+													pushHistory: false,
+												});
+												editor.timeline.updateElements({
+													updates: [{
+														trackId,
+														elementId: element.id,
+														updates: {
+															filterRange: {
+																start: currentFilterRange.start,
+																end: value,
+															},
+														},
+													}],
+													pushHistory: true,
+												});
+												initialFilterEndRef.current = null;
+											}
+											isEditingFilterEnd.current = false;
+											filterEndDraft.current = "";
+											forceRender();
+										}}
+										className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+									/>
+								</PropertyItemValue>
+							</PropertyItem>
+						</div>
+					</PropertyGroup>
+				)}
+			</PanelBaseView>
 		</div>
 	);
 }

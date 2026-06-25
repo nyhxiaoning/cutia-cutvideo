@@ -128,6 +128,7 @@ export interface VideoElement extends BaseTimelineElement {
 	playbackRate?: number;
 	reversed?: boolean;
 	filter?: string;
+	filterRange?: { start: number; end: number };
 }
 
 export interface ImageElement extends BaseTimelineElement {
@@ -137,6 +138,7 @@ export interface ImageElement extends BaseTimelineElement {
 	transform: Transform;
 	opacity: number;
 	filter?: string;
+	filterRange?: { start: number; end: number };
 }
 
 export interface TextStroke {
