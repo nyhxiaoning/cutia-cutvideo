@@ -602,6 +602,7 @@ export class ProjectManager {
 			duration,
 			canvasSize,
 			background,
+				adjustments: this.active?.settings.adjustments,
 		});
 
 		const renderer = new CanvasRenderer({

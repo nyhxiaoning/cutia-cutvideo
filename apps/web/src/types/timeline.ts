@@ -109,6 +109,22 @@ export interface LibraryAudioElement extends BaseAudioElement {
 
 export type AudioElement = UploadAudioElement | LibraryAudioElement;
 
+export type EasingType = "linear" | "ease-in" | "ease-out" | "ease-in-out";
+
+export interface KeyframeDef {
+	time: number;
+	value: number;
+	easing?: EasingType;
+}
+
+export interface ElementKeyframes {
+	scale?: KeyframeDef[];
+	positionX?: KeyframeDef[];
+	positionY?: KeyframeDef[];
+	rotate?: KeyframeDef[];
+	opacity?: KeyframeDef[];
+}
+
 interface BaseTimelineElement {
 	id: string;
 	name: string;
@@ -116,6 +132,7 @@ interface BaseTimelineElement {
 	startTime: number;
 	trimStart: number;
 	trimEnd: number;
+	keyframes?: ElementKeyframes;
 }
 
 export interface VideoElement extends BaseTimelineElement {

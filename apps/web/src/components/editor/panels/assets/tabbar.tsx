@@ -29,7 +29,6 @@ export function TabBar() {
 		t("Transitions");
 		t("Captions");
 		t("Filters");
-		t("Overlays");
 		t("Adjustment");
 		t("AI");
 		t("Settings");

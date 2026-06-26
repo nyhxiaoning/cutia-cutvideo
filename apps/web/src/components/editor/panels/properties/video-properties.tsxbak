@@ -13,8 +13,12 @@ import {
 } from "./property-item";
 import { clamp } from "@/utils/math";
 import { useEditor } from "@/hooks/use-editor";
-import type { ImageElement, VideoElement } from "@/types/timeline";
-import type { ElementKeyframes, KeyframeDef } from "@/types/timeline";
+import type {
+	ImageElement,
+	VideoElement,
+	ElementKeyframes,
+} from "@/types/timeline";
+import type { KeyframeDef } from "@/types/timeline";
 import { SPEED_PRESETS, formatSpeedLabel } from "@/lib/timeline/speed-utils";
 
 export function VideoProperties({
@@ -30,6 +34,7 @@ export function VideoProperties({
 
 	// i18next-toolkit: forces extraction of keyframe labels (dead code, extract-only)
 	if (false as boolean) {
+		t("Keyframe");
 		t("Add Keyframe");
 		t("Remove Keyframe");
 	}
@@ -98,81 +103,6 @@ export function VideoProperties({
 	const filterEndDisplay = isEditingFilterEnd.current
 		? filterEndDraft.current
 		: currentFilterRange.end.toString();
-
-	const toggleKeyframe = ({
-		prop,
-		value,
-	}: {
-		prop: keyof ElementKeyframes;
-		value: number;
-	}) => {
-		const currentKeyframes = element.keyframes ?? {};
-		const list: KeyframeDef[] = [...(currentKeyframes[prop] ?? [])];
-		const existingIdx = list.findIndex(
-			(kf) => Math.abs(kf.time - localTime) < 0.01,
-		);
-		if (existingIdx >= 0) {
-			list.splice(existingIdx, 1);
-		} else {
-			list.push({ time: localTime, value });
-			list.sort((a, b) => a.time - b.time);
-		}
-		const newKeyframes = { ...currentKeyframes, [prop]: list };
-		for (const key of Object.keys(newKeyframes) as (keyof ElementKeyframes)[]) {
-			if (newKeyframes[key]?.length === 0) delete newKeyframes[key];
-		}
-		editor.timeline.updateElements({
-			updates: [
-				{
-					trackId,
-					elementId: element.id,
-					updates: {
-						keyframes:
-							Object.keys(newKeyframes).length > 0
-								? newKeyframes
-								: undefined,
-					},
-				},
-			],
-			pushHistory: true,
-		});
-	};
-
-	const hasKeyframe = (prop: keyof ElementKeyframes): boolean => {
-		return (element.keyframes?.[prop] ?? []).some(
-			(kf) => Math.abs(kf.time - localTime) < 0.01,
-		);
-	};
-
-	const KeyframeBtn = ({
-		prop,
-		value,
-	}: {
-		prop: keyof ElementKeyframes;
-		value: number;
-	}) => {
-		const active = hasKeyframe(prop);
-		return (
-			<span
-				role="button"
-				tabIndex={0}
-				title={active ? t("Remove Keyframe") : t("Add Keyframe")}
-				onClick={() => toggleKeyframe({ prop, value })}
-				onKeyDown={(e: React.KeyboardEvent) => {
-					if (e.key === "Enter" || e.key === " ")
-						toggleKeyframe({ prop, value });
-				}}
-				className={`flex size-4 shrink-0 items-center justify-center rounded-sm text-[8px] transition-colors hover:opacity-80 cursor-pointer ${
-					active
-						? "text-primary-foreground bg-primary"
-						: "text-muted-foreground/40 hover:text-muted-foreground"
-				}`}
-				aria-label={active ? t("Remove Keyframe") : t("Add Keyframe")}
-			>
-				◆
-			</span>
-		);
-	};
 
 	const applySpeedChange = ({
 		newRate,
@@ -247,54 +177,51 @@ export function VideoProperties({
 						<PropertyItem>
 							<PropertyItemLabel>{t("Position X")}</PropertyItemLabel>
 							<PropertyItemValue>
-								<div className="flex items-center gap-1">
-									<KeyframeBtn prop="positionX" value={element.transform.position.x} />
-									<Input
-										type="number"
-										value={posXDisplay}
-										onFocus={() => {
-											isEditingPosX.current = true;
-											posXDraft.current = Math.round(
-												element.transform.position.x,
-											).toString();
-											forceRender();
-										}}
-										onChange={(e) => {
-											posXDraft.current = e.target.value;
-											forceRender();
-											if (initialPosXRef.current === null) {
-												initialPosXRef.current = element.transform.position.x;
-											}
-											const parsed = Number.parseFloat(e.target.value);
-											if (!Number.isNaN(parsed)) {
+								<Input
+									type="number"
+									value={posXDisplay}
+									onFocus={() => {
+										isEditingPosX.current = true;
+										posXDraft.current = Math.round(
+											element.transform.position.x,
+										).toString();
+										forceRender();
+									}}
+									onChange={(e) => {
+										posXDraft.current = e.target.value;
+										forceRender();
+										if (initialPosXRef.current === null) {
+											initialPosXRef.current = element.transform.position.x;
+										}
+										const parsed = Number.parseFloat(e.target.value);
+										if (!Number.isNaN(parsed)) {
+											updateTransform({
+												updates: { position: { ...element.transform.position, x: parsed } },
+												pushHistory: false,
+											});
+										}
+									}}
+									onBlur={() => {
+										commitNumberField({
+											draft: posXDraft.current,
+											initial: initialPosXRef,
+											apply: (value) => {
 												updateTransform({
-													updates: { position: { ...element.transform.position, x: parsed } },
+													updates: { position: { ...element.transform.position, x: initialPosXRef.current ?? 0 } },
 													pushHistory: false,
 												});
-											}
-										}}
-										onBlur={() => {
-											commitNumberField({
-												draft: posXDraft.current,
-												initial: initialPosXRef,
-												apply: (value) => {
-													updateTransform({
-														updates: { position: { ...element.transform.position, x: initialPosXRef.current ?? 0 } },
-														pushHistory: false,
-													});
-													updateTransform({
-														updates: { position: { ...element.transform.position, x: value } },
-														pushHistory: true,
-													});
-												},
-											});
-											isEditingPosX.current = false;
-											posXDraft.current = "";
-											forceRender();
-										}}
-										className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-									/>
-								</div>
+												updateTransform({
+													updates: { position: { ...element.transform.position, x: value } },
+													pushHistory: true,
+												});
+											},
+										});
+										isEditingPosX.current = false;
+										posXDraft.current = "";
+										forceRender();
+									}}
+									className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
 							</PropertyItemValue>
 						</PropertyItem>
 
@@ -302,54 +229,51 @@ export function VideoProperties({
 						<PropertyItem>
 							<PropertyItemLabel>{t("Position Y")}</PropertyItemLabel>
 							<PropertyItemValue>
-								<div className="flex items-center gap-1">
-									<KeyframeBtn prop="positionY" value={element.transform.position.y} />
-									<Input
-										type="number"
-										value={posYDisplay}
-										onFocus={() => {
-											isEditingPosY.current = true;
-											posYDraft.current = Math.round(
-												element.transform.position.y,
-											).toString();
-											forceRender();
-										}}
-										onChange={(e) => {
-											posYDraft.current = e.target.value;
-											forceRender();
-											if (initialPosYRef.current === null) {
-												initialPosYRef.current = element.transform.position.y;
-											}
-											const parsed = Number.parseFloat(e.target.value);
-											if (!Number.isNaN(parsed)) {
+								<Input
+									type="number"
+									value={posYDisplay}
+									onFocus={() => {
+										isEditingPosY.current = true;
+										posYDraft.current = Math.round(
+											element.transform.position.y,
+										).toString();
+										forceRender();
+									}}
+									onChange={(e) => {
+										posYDraft.current = e.target.value;
+										forceRender();
+										if (initialPosYRef.current === null) {
+											initialPosYRef.current = element.transform.position.y;
+										}
+										const parsed = Number.parseFloat(e.target.value);
+										if (!Number.isNaN(parsed)) {
+											updateTransform({
+												updates: { position: { ...element.transform.position, y: parsed } },
+												pushHistory: false,
+											});
+										}
+									}}
+									onBlur={() => {
+										commitNumberField({
+											draft: posYDraft.current,
+											initial: initialPosYRef,
+											apply: (value) => {
 												updateTransform({
-													updates: { position: { ...element.transform.position, y: parsed } },
+													updates: { position: { ...element.transform.position, y: initialPosYRef.current ?? 0 } },
 													pushHistory: false,
 												});
-											}
-										}}
-										onBlur={() => {
-											commitNumberField({
-												draft: posYDraft.current,
-												initial: initialPosYRef,
-												apply: (value) => {
-													updateTransform({
-														updates: { position: { ...element.transform.position, y: initialPosYRef.current ?? 0 } },
-														pushHistory: false,
-													});
-													updateTransform({
-														updates: { position: { ...element.transform.position, y: value } },
-														pushHistory: true,
-													});
-												},
-											});
-											isEditingPosY.current = false;
-											posYDraft.current = "";
-											forceRender();
-										}}
-										className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-									/>
-								</div>
+												updateTransform({
+													updates: { position: { ...element.transform.position, y: value } },
+													pushHistory: true,
+												});
+											},
+										});
+										isEditingPosY.current = false;
+										posYDraft.current = "";
+										forceRender();
+									}}
+									className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
 							</PropertyItemValue>
 						</PropertyItem>
 
@@ -387,7 +311,6 @@ export function VideoProperties({
 										}}
 										className="w-full"
 									/>
-									<KeyframeBtn prop="scale" value={element.transform.scale} />
 									<Input
 										type="number"
 										value={scaleDisplay}
@@ -473,7 +396,6 @@ export function VideoProperties({
 										}}
 										className="w-full"
 									/>
-									<KeyframeBtn prop="rotate" value={element.transform.rotate} />
 									<Input
 										type="number"
 										value={rotationDisplay}
@@ -533,18 +455,39 @@ export function VideoProperties({
 						<PropertyItem direction="column">
 							<PropertyItemLabel>{t("Opacity")}</PropertyItemLabel>
 							<PropertyItemValue>
-								<div className="flex items-center gap-1">
-									<KeyframeBtn prop="opacity" value={element.opacity} />
-									<div className="flex items-center gap-2 flex-1">
-										<Slider
-											value={[element.opacity * 100]}
-											min={0}
-											max={100}
-											step={1}
-											onValueChange={([value]) => {
-												if (initialOpacityRef.current === null) {
-													initialOpacityRef.current = element.opacity;
-												}
+								<div className="flex items-center gap-2">
+									<Slider
+										value={[element.opacity * 100]}
+										min={0}
+										max={100}
+										step={1}
+										onValueChange={([value]) => {
+											if (initialOpacityRef.current === null) {
+												initialOpacityRef.current = element.opacity;
+											}
+											editor.timeline.updateElements({
+												updates: [
+													{
+														trackId,
+														elementId: element.id,
+														updates: { opacity: value / 100 },
+													},
+												],
+												pushHistory: false,
+											});
+										}}
+										onValueCommit={([value]) => {
+											if (initialOpacityRef.current !== null) {
+												editor.timeline.updateElements({
+													updates: [
+														{
+															trackId,
+															elementId: element.id,
+															updates: { opacity: initialOpacityRef.current },
+														},
+													],
+													pushHistory: false,
+												});
 												editor.timeline.updateElements({
 													updates: [
 														{
@@ -553,104 +496,80 @@ export function VideoProperties({
 															updates: { opacity: value / 100 },
 														},
 													],
+													pushHistory: true,
+												});
+												initialOpacityRef.current = null;
+											}
+										}}
+										className="w-full"
+									/>
+									<Input
+										type="number"
+										value={opacityDisplay}
+										min={0}
+										max={100}
+										onFocus={() => {
+											isEditingOpacity.current = true;
+											opacityDraft.current = Math.round(
+												element.opacity * 100,
+											).toString();
+											forceRender();
+										}}
+										onChange={(e) => {
+											opacityDraft.current = e.target.value;
+											forceRender();
+											if (initialOpacityRef.current === null) {
+												initialOpacityRef.current = element.opacity;
+											}
+											const parsed = parseInt(e.target.value, 10);
+											if (!Number.isNaN(parsed)) {
+												const opacityPercent = clamp({ value: parsed, min: 0, max: 100 });
+												editor.timeline.updateElements({
+													updates: [
+														{
+															trackId,
+															elementId: element.id,
+															updates: { opacity: opacityPercent / 100 },
+														},
+													],
 													pushHistory: false,
 												});
-											}}
-											onValueCommit={([value]) => {
-												if (initialOpacityRef.current !== null) {
-													editor.timeline.updateElements({
-														updates: [
-															{
-																trackId,
-																elementId: element.id,
-																updates: { opacity: initialOpacityRef.current },
-															},
-														],
-														pushHistory: false,
-													});
-													editor.timeline.updateElements({
-														updates: [
-															{
-																trackId,
-																elementId: element.id,
-																updates: { opacity: value / 100 },
-															},
-														],
-														pushHistory: true,
-													});
-													initialOpacityRef.current = null;
-												}
-											}}
-											className="w-full"
-										/>
-										<Input
-											type="number"
-											value={opacityDisplay}
-											min={0}
-											max={100}
-											onFocus={() => {
-												isEditingOpacity.current = true;
-												opacityDraft.current = Math.round(
-													element.opacity * 100,
-												).toString();
-												forceRender();
-											}}
-											onChange={(e) => {
-												opacityDraft.current = e.target.value;
-												forceRender();
-												if (initialOpacityRef.current === null) {
-													initialOpacityRef.current = element.opacity;
-												}
-												const parsed = parseInt(e.target.value, 10);
-												if (!Number.isNaN(parsed)) {
-													const opacityPercent = clamp({ value: parsed, min: 0, max: 100 });
-													editor.timeline.updateElements({
-														updates: [
-															{
-																trackId,
-																elementId: element.id,
-																updates: { opacity: opacityPercent / 100 },
-															},
-														],
-														pushHistory: false,
-													});
-												}
-											}}
-											onBlur={() => {
-												if (initialOpacityRef.current !== null) {
-													const parsed = parseInt(opacityDraft.current, 10);
-													const opacityPercent = Number.isNaN(parsed)
-														? Math.round(element.opacity * 100)
-														: clamp({ value: parsed, min: 0, max: 100 });
-													editor.timeline.updateElements({
-														updates: [
-															{
-																trackId,
-																elementId: element.id,
-																updates: { opacity: initialOpacityRef.current },
-															},
-														],
-														pushHistory: false,
-													});
-													editor.timeline.updateElements({
-														updates: [
-															{
-																trackId,
-																elementId: element.id,
-																updates: { opacity: opacityPercent / 100 },
-															},
-														],
-														pushHistory: true,
-													});
-													initialOpacityRef.current = null;
-												}
-												isEditingOpacity.current = false;
-												opacityDraft.current = "";
-												forceRender();
-											}}
-											className="bg-accent h-7 w-14 [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-										/>
-									</div>
+											}
+										}}
+										onBlur={() => {
+											if (initialOpacityRef.current !== null) {
+												const parsed = parseInt(opacityDraft.current, 10);
+												const opacityPercent = Number.isNaN(parsed)
+													? Math.round(element.opacity * 100)
+													: clamp({ value: parsed, min: 0, max: 100 });
+												editor.timeline.updateElements({
+													updates: [
+														{
+															trackId,
+															elementId: element.id,
+															updates: { opacity: initialOpacityRef.current },
+														},
+													],
+													pushHistory: false,
+												});
+												editor.timeline.updateElements({
+													updates: [
+														{
+															trackId,
+															elementId: element.id,
+															updates: { opacity: opacityPercent / 100 },
+														},
+													],
+													pushHistory: true,
+												});
+												initialOpacityRef.current = null;
+											}
+											isEditingOpacity.current = false;
+											opacityDraft.current = "";
+											forceRender();
+										}}
+										className="bg-accent h-7 w-14 [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+									/>
 								</div>
 							</PropertyItemValue>
 						</PropertyItem>

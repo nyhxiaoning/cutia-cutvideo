@@ -16,7 +16,7 @@ interface EffectPreset {
 	previewColor: string;
 	description: string;
 	descriptionZh: string;
-	category: "color" | "blur" | "artistic" | "lighting" | "animal" | "landscape" | "overlay";
+	category: "color" | "blur" | "artistic" | "lighting" | "animal" | "landscape" | "overlay" | "advanced";
 }
 
 const OVERLAY_PRESETS_DATA = [
@@ -33,6 +33,13 @@ const OVERLAY_PRESETS_DATA = [
 	{ name: "Bubbles", filter: "__overlay__bubbles", previewColor: "#87ceeb", description: "Rising soap bubbles", descriptionZh: "气泡上升效果", overlayType: "bubble" as const, density: 20, speed: 1.5, opacity: 0.6, wind: 0.3 },
 	{ name: "Confetti", filter: "__overlay__confetti", previewColor: "#ff69b4", description: "Falling confetti celebration", descriptionZh: "五彩纸屑庆祝效果", overlayType: "confetti" as const, density: 50, speed: 3, opacity: 0.9, wind: 2 },
 	{ name: "Screen Shake", filter: "__overlay__shake", previewColor: "#333333", description: "Camera shake effect", descriptionZh: "屏幕抖动效果", overlayType: "shake" as const, density: 0, speed: 0, opacity: 1, intensity: 6 },
+];
+
+const ADVANCED_PRESETS: EffectPreset[] = [
+	{ name: "Tyndall", filter: "brightness(115%) contrast(85%) saturate(130%) blur(0.3px) sepia(5%)", previewColor: "#c8a050", description: "Tyndall light beam effect, adds warm volumetric light", descriptionZh: "丁达尔效应，增强光束感与暖色调体积光", category: "advanced" },
+	{ name: "Rhythm", filter: "brightness(110%) contrast(160%) saturate(120%)", previewColor: "#2a1a4a", description: "Rhythmic beat effect with pulsing high contrast", descriptionZh: "节奏律动效果，高对比脉冲感", category: "advanced" },
+	{ name: "Pop Out", filter: "brightness(120%) contrast(140%) saturate(130%) drop-shadow(0 0 6px rgba(255,255,255,0.4))", previewColor: "#4a7ab8", description: "Pop-out effect that makes subject jump off screen", descriptionZh: "冲出屏幕效果，增强立体感和景深", category: "advanced" },
+	{ name: "Focus Blur", filter: "brightness(100%) contrast(110%) saturate(90%) blur(2px)", previewColor: "#8a9aae", description: "Out-of-focus blur with soft desaturated look", descriptionZh: "焦点虚化效果，柔焦失焦朦胧感", category: "advanced" },
 ];
 
 function isOverlayPreset(preset: EffectPreset): boolean {
@@ -93,6 +100,9 @@ const EFFECT_PRESETS: EffectPreset[] = [
 		descriptionZh: p.descriptionZh,
 		category: "overlay" as const,
 	})),
+
+	// Advanced effects
+	...ADVANCED_PRESETS,
 ];
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -103,11 +113,22 @@ const CATEGORY_LABELS: Record<string, string> = {
 	animal: "Animal",
 	landscape: "Landscape",
 	overlay: "Overlay",
+	advanced: "Advanced",
 };
 
 export function EffectsView() {
 	const { t } = useTranslation();
 	const editor = useEditor();
+
+	// i18next-toolkit: forces extraction of advanced effect labels (dead code, extract-only)
+	if (false as boolean) {
+		t("Advanced");
+		t("Tyndall");
+		t("Rhythm");
+		t("Pop Out");
+		t("Focus Blur");
+	}
+
 	const { selectedElements } = useElementSelection();
 	const [activeFilter, setActiveFilter] = useState<string | null>(null);
 

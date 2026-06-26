@@ -13,7 +13,7 @@ import { TextView } from "./views/text";
 import { TransitionsView } from "./views/transitions";
 import { EffectsView } from "./views/effects";
 import { FiltersView } from "./views/filters";
-import { OverlaysView } from "./views/overlays";
+import { AdjustmentView } from "./views/adjustment";
 import { OpenInEditor } from "@/components/dev/open-in-editor";
 
 export function AssetsPanel() {
@@ -28,12 +28,7 @@ export function AssetsPanel() {
 		transitions: <TransitionsView />,
 		captions: <Captions />,
 		filters: <FiltersView />,
-		overlays: <OverlaysView />,
-		adjustment: (
-			<div className="text-muted-foreground p-4">
-				Adjustment view coming soon...
-			</div>
-		),
+		adjustment: <AdjustmentView />,
 		ai: <AIView />,
 		settings: <SettingsView />,
 	};

@@ -1,6 +1,10 @@
 import type { CanvasRenderer } from "../canvas-renderer";
 import { BaseNode } from "./base-node";
-import type { TextElement } from "@/types/timeline";
+import type { TextElement, ElementKeyframes } from "@/types/timeline";
+import {
+	interpolateKeyframes,
+	computeKeyframedTransform,
+} from "@/utils/keyframe";
 import { FONT_SIZE_SCALE_REFERENCE } from "@/constants/text-constants";
 
 type RenderContext =
@@ -72,6 +76,7 @@ export type TextNodeParams = TextElement & {
 	canvasCenter: { x: number; y: number };
 	canvasHeight: number;
 	textBaseline?: CanvasTextBaseline;
+	keyframes?: ElementKeyframes;
 };
 
 export class TextNode extends BaseNode<TextNodeParams> {
@@ -89,17 +94,46 @@ export class TextNode extends BaseNode<TextNodeParams> {
 
 		renderer.context.save();
 
-		const x = this.params.transform.position.x + this.params.canvasCenter.x;
-		const y = this.params.transform.position.y + this.params.canvasCenter.y;
+		const elementLocalTime = time - this.params.startTime;
+		const rawTransform = this.params.transform;
+		const rawOpacity = this.params.opacity;
+		let effectiveTransform = rawTransform;
+		let effectiveOpacity = rawOpacity;
+
+		if (this.params.keyframes) {
+			const kfTransform = computeKeyframedTransform(
+				this.params.keyframes,
+				elementLocalTime,
+			);
+			if (kfTransform) {
+				effectiveTransform = { ...rawTransform, ...kfTransform };
+				if (kfTransform.position) {
+					effectiveTransform.position = {
+						...rawTransform.position,
+						...kfTransform.position,
+					};
+				}
+			}
+			const kfOpacity = interpolateKeyframes(
+				this.params.keyframes.opacity ?? [],
+				elementLocalTime,
+			);
+			if (kfOpacity !== null) {
+				effectiveOpacity = kfOpacity;
+			}
+		}
+
+		const x = effectiveTransform.position.x + this.params.canvasCenter.x;
+		const y = effectiveTransform.position.y + this.params.canvasCenter.y;
 
 		renderer.context.translate(x, y);
-		if (this.params.transform.rotate) {
-			renderer.context.rotate((this.params.transform.rotate * Math.PI) / 180);
+		if (effectiveTransform.rotate) {
+			renderer.context.rotate((effectiveTransform.rotate * Math.PI) / 180);
 		}
-		if (this.params.transform.scale !== 1) {
+		if (effectiveTransform.scale !== 1) {
 			renderer.context.scale(
-				this.params.transform.scale,
-				this.params.transform.scale,
+				effectiveTransform.scale,
+				effectiveTransform.scale,
 			);
 		}
 
@@ -116,7 +150,7 @@ export class TextNode extends BaseNode<TextNodeParams> {
 		renderer.context.fillStyle = this.params.color;
 
 		const prevAlpha = renderer.context.globalAlpha;
-		renderer.context.globalAlpha = this.params.opacity;
+		renderer.context.globalAlpha = effectiveOpacity;
 
 		const boxWidth = this.params.boxWidth;
 		const hasBoxWidth = boxWidth !== undefined && boxWidth > 0;

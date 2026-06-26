@@ -61,6 +61,7 @@ export class RendererManager {
 				duration,
 				canvasSize,
 				background: activeProject.settings.background,
+				adjustments: activeProject.settings.adjustments,
 			});
 
 			const exporter = new SceneExporter({

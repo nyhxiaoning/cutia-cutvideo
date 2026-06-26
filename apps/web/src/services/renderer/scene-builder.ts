@@ -16,6 +16,7 @@ import { TransitionNode } from "./nodes/transition-node";
 import { OverlayNode } from "./nodes/overlay-node";
 import type { BaseNode } from "./nodes/base-node";
 import type { TBackground, TCanvasSize } from "@/types/project";
+import type { GlobalAdjustments } from "@/types/project";
 import { DEFAULT_BLUR_INTENSITY } from "@/constants/project-constants";
 import { isMainTrack } from "@/lib/timeline";
 import { isBottomAlignedSubtitleText } from "@/lib/timeline/text-utils";
@@ -26,6 +27,7 @@ export type BuildSceneParams = {
 	mediaAssets: MediaAsset[];
 	duration: number;
 	background: TBackground;
+	adjustments?: GlobalAdjustments;
 };
 
 function buildVisualElementNode({
@@ -56,6 +58,7 @@ function buildVisualElementNode({
 			reversed: videoElement.reversed,
 			filter: videoElement.filter,
 			filterRange: videoElement.filterRange,
+				keyframes: element.keyframes,
 		});
 	}
 
@@ -70,6 +73,7 @@ function buildVisualElementNode({
 			opacity: element.opacity,
 			filter: (element as ImageElement).filter,
 			filterRange: (element as ImageElement).filterRange,
+				keyframes: element.keyframes,
 		});
 	}
 
@@ -85,9 +89,10 @@ function getElementEndTime({
 }
 
 export function buildScene(params: BuildSceneParams) {
-	const { tracks, mediaAssets, duration, canvasSize, background } = params;
+	const { tracks, mediaAssets, duration, canvasSize, background, adjustments } =
+		params;
 
-	const rootNode = new RootNode({ duration });
+	const rootNode = new RootNode({ duration, adjustments });
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
 
 	const visibleTracks = tracks.filter(
@@ -192,6 +197,7 @@ export function buildScene(params: BuildSceneParams) {
 						},
 						canvasHeight: canvasSize.height,
 						textBaseline,
+						keyframes: element.keyframes,
 					}),
 				);
 			}
@@ -207,6 +213,7 @@ export function buildScene(params: BuildSceneParams) {
 						transform: element.transform,
 						opacity: element.opacity,
 						color: element.color,
+						keyframes: element.keyframes,
 					}),
 				);
 			}

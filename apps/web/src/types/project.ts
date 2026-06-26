@@ -11,6 +11,22 @@ export type TBackground =
 			blurIntensity: number;
 	  };
 
+export interface GlobalAdjustments {
+	brightness: number; // -100 ~ 100, 0 = neutral
+	contrast: number; // -100 ~ 100, 0 = neutral
+	saturation: number; // -100 ~ 100, 0 = neutral
+	temperature: number; // -100 ~ 100, 0 = neutral
+	vignette: number; // 0 ~ 100, 0 = off
+}
+
+export const DEFAULT_GLOBAL_ADJUSTMENTS: GlobalAdjustments = {
+	brightness: 0,
+	contrast: 0,
+	saturation: 0,
+	temperature: 0,
+	vignette: 0,
+};
+
 export interface TCanvasSize {
 	width: number;
 	height: number;
@@ -30,6 +46,7 @@ export interface TProjectSettings {
 	canvasSize: TCanvasSize;
 	originalCanvasSize?: TCanvasSize | null;
 	background: TBackground;
+	adjustments?: GlobalAdjustments;
 }
 
 export interface TTimelineViewState {

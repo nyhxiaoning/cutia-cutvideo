@@ -63,10 +63,11 @@ function RenderTreeController() {
 			duration,
 			canvasSize: { width, height },
 			background: activeProject.settings.background,
+				adjustments: activeProject.settings.adjustments,
 		});
 
 		editor.renderer.setRenderTree({ renderTree });
-	}, [tracks, mediaAssets, activeProject?.settings.background, width, height]);
+	}, [tracks, mediaAssets, activeProject?.settings.background, activeProject?.settings.adjustments, width, height]);
 
 	return null;
 }
