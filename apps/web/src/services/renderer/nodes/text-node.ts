@@ -77,6 +77,9 @@ export type TextNodeParams = TextElement & {
 	canvasHeight: number;
 	textBaseline?: CanvasTextBaseline;
 	keyframes?: ElementKeyframes;
+	crop?: import("@/types/timeline").CropRect;
+	maskShape?: import("@/types/timeline").MaskShape;
+	maskRadius?: number;
 };
 
 export class TextNode extends BaseNode<TextNodeParams> {
@@ -125,6 +128,22 @@ export class TextNode extends BaseNode<TextNodeParams> {
 
 		const x = effectiveTransform.position.x + this.params.canvasCenter.x;
 		const y = effectiveTransform.position.y + this.params.canvasCenter.y;
+
+		// Apply crop & mask for text elements
+		const { crop, maskShape, maskRadius } = this.params;
+		const hasMask = maskShape && maskShape !== "none";
+		const textW = this.params.boxWidth ?? 200;
+		if (hasMask) {
+			const ctx = renderer.context;
+			ctx.beginPath();
+			if (maskShape === "circle") {
+				ctx.ellipse(x, y, Math.abs(textW) / 2, 50, 0, 0, Math.PI * 2);
+			} else if (maskShape === "rounded-rect") {
+				const r = (maskRadius ?? 0.1) * Math.min(textW, 100);
+				ctx.roundRect(x - textW / 2, y - 50, textW, 100, r);
+			}
+			ctx.clip();
+		}
 
 		renderer.context.translate(x, y);
 		if (effectiveTransform.rotate) {

@@ -95,6 +95,9 @@ interface BaseAudioElement extends BaseTimelineElement {
 	muted?: boolean;
 	buffer?: AudioBuffer;
 	playbackRate?: number;
+	pan?: number; // -1 to 1, 0=center, 负值=左声道
+	fadeInDuration?: number; // 淡入时长（秒）
+	fadeOutDuration?: number; // 淡出时长（秒）
 }
 
 export interface UploadAudioElement extends BaseAudioElement {
@@ -125,6 +128,15 @@ export interface ElementKeyframes {
 	opacity?: KeyframeDef[];
 }
 
+export interface CropRect {
+	x: number; // 归一化 0~1，裁剪源画面左上角 X
+	y: number; // 归一化 0~1，裁剪源画面左上角 Y
+	width: number; // 归一化 0~1，裁剪宽度（1=全宽）
+	height: number; // 归一化 0~1，裁剪高度（1=全高）
+}
+
+export type MaskShape = "none" | "circle" | "rounded-rect";
+
 interface BaseTimelineElement {
 	id: string;
 	name: string;
@@ -133,6 +145,9 @@ interface BaseTimelineElement {
 	trimStart: number;
 	trimEnd: number;
 	keyframes?: ElementKeyframes;
+	crop?: CropRect;
+	maskShape?: MaskShape;
+	maskRadius?: number;
 }
 
 export interface VideoElement extends BaseTimelineElement {
@@ -146,6 +161,9 @@ export interface VideoElement extends BaseTimelineElement {
 	reversed?: boolean;
 	filter?: string;
 	filterRange?: { start: number; end: number };
+	pan?: number;
+	fadeInDuration?: number;
+	fadeOutDuration?: number;
 }
 
 export interface ImageElement extends BaseTimelineElement {

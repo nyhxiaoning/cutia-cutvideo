@@ -12,7 +12,12 @@ import { mediaSupportsAudio } from "@/lib/media/media-utils";
 export type CollectedAudioElement = Omit<
 	AudioElement,
 	"type" | "mediaId" | "id" | "name" | "sourceType" | "sourceUrl"
-> & { buffer: AudioBuffer };
+> & {
+	buffer: AudioBuffer;
+	pan?: number;
+	fadeInDuration?: number;
+	fadeOutDuration?: number;
+};
 
 export function createAudioContext(): AudioContext {
 	const AudioContextConstructor =
@@ -111,6 +116,9 @@ export async function collectAudioElements({
 						trimEnd: element.trimEnd,
 						volume,
 						muted,
+						pan: element.pan,
+						fadeInDuration: element.fadeInDuration,
+						fadeOutDuration: element.fadeOutDuration,
 					};
 				}),
 			);
@@ -135,6 +143,9 @@ export async function collectAudioElements({
 						trimEnd: element.trimEnd,
 						volume: 1,
 						muted,
+						pan: element.pan,
+						fadeInDuration: element.fadeInDuration,
+						fadeOutDuration: element.fadeOutDuration,
 					};
 				}),
 			);
@@ -219,6 +230,9 @@ export interface AudioClipSource {
 	muted: boolean;
 	volume: number;
 	playbackRate: number;
+	pan?: number;
+	fadeInDuration?: number;
+	fadeOutDuration?: number;
 }
 
 async function fetchLibraryAudioSource({
@@ -280,6 +294,9 @@ async function fetchLibraryAudioClip({
 			muted,
 			volume: element.volume ?? 1,
 			playbackRate: element.playbackRate ?? 1,
+			pan: element.pan,
+			fadeInDuration: element.fadeInDuration,
+			fadeOutDuration: element.fadeOutDuration,
 		};
 	} catch (error) {
 		console.warn("Failed to fetch library audio:", error);
@@ -326,6 +343,26 @@ function getElementVolume({
 	return 1;
 }
 
+function getElementPan({ element }: { element: TimelineElement }): number | undefined {
+	if ("pan" in element && typeof element.pan === "number") {
+		return element.pan;
+	}
+	return undefined;
+}
+
+function getElementFadeDuration({
+	element,
+	key,
+}: {
+	element: TimelineElement;
+	key: "fadeInDuration" | "fadeOutDuration";
+}): number | undefined {
+	if (key in element && typeof (element as Record<string, unknown>)[key] === "number") {
+		return (element as Record<string, unknown>)[key] as number;
+	}
+	return undefined;
+}
+
 function collectMediaAudioClip({
 	element,
 	mediaAsset,
@@ -346,6 +383,9 @@ function collectMediaAudioClip({
 		muted,
 		volume: getElementVolume({ element }),
 		playbackRate: getElementPlaybackRate({ element }),
+		pan: getElementPan({ element }),
+		fadeInDuration: getElementFadeDuration({ element, key: "fadeInDuration" }),
+		fadeOutDuration: getElementFadeDuration({ element, key: "fadeOutDuration" }),
 	};
 }
 
@@ -535,6 +575,9 @@ function mixAudioChannels({
 		trimStart,
 		duration: elementDuration,
 		volume,
+		pan,
+		fadeInDuration,
+		fadeOutDuration,
 	} = element;
 
 	const sourceStartSample = Math.floor(trimStart * buffer.sampleRate);
@@ -544,6 +587,13 @@ function mixAudioChannels({
 	const resampleRatio = sampleRate / buffer.sampleRate;
 	const resampledLength = Math.floor(sourceLengthSamples * resampleRatio);
 
+	const panLeft = pan !== undefined ? Math.min(1, Math.max(0, 1 - Math.max(0, pan))) : 1;
+	const panRight = pan !== undefined ? Math.min(1, Math.max(0, 1 + Math.min(0, pan))) : 1;
+
+	const totalSamples = outputLength;
+	const fadeInSamples = fadeInDuration ? Math.floor(fadeInDuration * sampleRate) : 0;
+	const fadeOutSamples = fadeOutDuration ? Math.floor(fadeOutDuration * sampleRate) : 0;
+
 	const outputChannels = 2;
 	for (let channel = 0; channel < outputChannels; channel++) {
 		const outputData = outputBuffer.getChannelData(channel);
@@ -552,7 +602,7 @@ function mixAudioChannels({
 
 		for (let i = 0; i < resampledLength; i++) {
 			const outputIndex = outputStartSample + i;
-			if (outputIndex >= outputLength) break;
+			if (outputIndex >= totalSamples) break;
 
 			const sourcePos = sourceStartSample + i / resampleRatio;
 			const sourceIndex = Math.floor(sourcePos);
@@ -566,7 +616,25 @@ function mixAudioChannels({
 					: sample0;
 			const interpolated = sample0 + fraction * (sample1 - sample0);
 
-			outputData[outputIndex] += interpolated * volume;
+			// Apply volume
+			let gain = volume;
+
+			// Apply pan: channel 0 = left, channel 1 = right
+			if (channel === 0) gain *= panLeft;
+			else gain *= panRight;
+
+			// Apply fade-in envelope
+			if (fadeInSamples > 0 && i < fadeInSamples) {
+				gain *= i / fadeInSamples;
+			}
+
+			// Apply fade-out envelope
+			if (fadeOutSamples > 0 && i > resampledLength - fadeOutSamples) {
+				const fadePos = (resampledLength - i) / fadeOutSamples;
+				gain *= Math.min(1, Math.max(0, fadePos));
+			}
+
+			outputData[outputIndex] += interpolated * gain;
 		}
 	}
 }

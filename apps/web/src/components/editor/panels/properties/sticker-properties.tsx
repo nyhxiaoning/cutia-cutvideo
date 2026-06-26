@@ -15,6 +15,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { clamp } from "@/utils/math";
 import { useEditor } from "@/hooks/use-editor";
 import type { StickerElement } from "@/types/timeline";
+import { CropMaskControls } from "./crop-mask-controls";
 
 export function StickerProperties({
 	_element: element,
@@ -570,6 +571,15 @@ export function StickerProperties({
 						</PropertyItem>
 					</div>
 				</PropertyGroup>
+
+				<CropMaskControls
+					editor={editor}
+					trackId={trackId}
+					elementId={element.id}
+					crop={element.crop}
+					maskShape={element.maskShape}
+					maskRadius={element.maskRadius}
+				/>
 			</PanelBaseView>
 		</div>
 	);

@@ -209,8 +209,50 @@ export class AudioManager {
 
 		const clipGain = audioContext.createGain();
 		clipGain.gain.value = clip.volume;
+
+		// Stereo panning
+		const panner = audioContext.createStereoPanner();
+		panner.pan.value = clip.pan ?? 0;
+
 		node.connect(clipGain);
-		clipGain.connect(this.masterGain);
+		clipGain.connect(panner);
+		panner.connect(this.masterGain);
+
+		// Fade envelope
+		const hasFadeIn = (clip.fadeInDuration ?? 0) > 0;
+		const hasFadeOut = (clip.fadeOutDuration ?? 0) > 0;
+		if (hasFadeIn) {
+			const fadeInDuration = Math.min(clip.fadeInDuration!, remainingDuration);
+			if (scheduleTime >= audioContext.currentTime) {
+				clipGain.gain.setValueAtTime(0, scheduleTime);
+				clipGain.gain.linearRampToValueAtTime(clip.volume, scheduleTime + fadeInDuration);
+			} else {
+				const late = audioContext.currentTime - scheduleTime;
+				if (late < fadeInDuration) {
+					const progress = late / fadeInDuration;
+					clipGain.gain.setValueAtTime(clip.volume * progress, audioContext.currentTime);
+					clipGain.gain.linearRampToValueAtTime(clip.volume, scheduleTime + fadeInDuration);
+				}
+			}
+		}
+		if (hasFadeOut) {
+			const fadeOutStart = Math.max(0, remainingDuration - clip.fadeOutDuration!);
+			const fadeOutTime = scheduleTime + fadeOutStart;
+			if (fadeOutTime > audioContext.currentTime) {
+				clipGain.gain.setValueAtTime(clip.volume, fadeOutTime);
+				clipGain.gain.linearRampToValueAtTime(0, scheduleTime + remainingDuration);
+			} else {
+				const late = audioContext.currentTime - fadeOutTime;
+				if (late < clip.fadeOutDuration!) {
+					const progress = Math.max(0, 1 - late / clip.fadeOutDuration!);
+					clipGain.gain.setValueAtTime(clip.volume * progress, audioContext.currentTime);
+					clipGain.gain.linearRampToValueAtTime(0, scheduleTime + remainingDuration);
+				}
+			}
+		}
+		if (!hasFadeIn && !hasFadeOut) {
+			clipGain.gain.setValueAtTime(clip.volume, scheduleTime);
+		}
 
 		if (scheduleTime >= audioContext.currentTime) {
 			node.start(scheduleTime, sourceOffset, remainingDuration);

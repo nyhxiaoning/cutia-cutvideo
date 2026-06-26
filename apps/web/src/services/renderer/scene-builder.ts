@@ -57,8 +57,11 @@ function buildVisualElementNode({
 			playbackRate: videoElement.playbackRate,
 			reversed: videoElement.reversed,
 			filter: videoElement.filter,
-			filterRange: videoElement.filterRange,
+				filterRange: videoElement.filterRange,
 				keyframes: element.keyframes,
+				crop: element.crop,
+				maskShape: element.maskShape,
+				maskRadius: element.maskRadius,
 		});
 	}
 
@@ -73,7 +76,10 @@ function buildVisualElementNode({
 			opacity: element.opacity,
 			filter: (element as ImageElement).filter,
 			filterRange: (element as ImageElement).filterRange,
-				keyframes: element.keyframes,
+			keyframes: element.keyframes,
+			crop: element.crop,
+			maskShape: element.maskShape,
+			maskRadius: element.maskRadius,
 		});
 	}
 
@@ -198,6 +204,9 @@ export function buildScene(params: BuildSceneParams) {
 						canvasHeight: canvasSize.height,
 						textBaseline,
 						keyframes: element.keyframes,
+						crop: element.crop,
+						maskShape: element.maskShape,
+						maskRadius: element.maskRadius,
 					}),
 				);
 			}
@@ -214,6 +223,9 @@ export function buildScene(params: BuildSceneParams) {
 						opacity: element.opacity,
 						color: element.color,
 						keyframes: element.keyframes,
+						crop: element.crop,
+						maskShape: element.maskShape,
+						maskRadius: element.maskRadius,
 					}),
 				);
 			}

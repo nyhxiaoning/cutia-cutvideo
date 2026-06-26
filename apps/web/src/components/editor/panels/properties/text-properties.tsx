@@ -26,6 +26,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { uppercase } from "@/utils/string";
 import { clamp } from "@/utils/math";
 import { useEditor } from "@/hooks/use-editor";
+import { CropMaskControls } from "./crop-mask-controls";
 import { DEFAULT_COLOR } from "@/constants/project-constants";
 import { MIN_FONT_SIZE, MAX_FONT_SIZE } from "@/constants/text-constants";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1479,7 +1480,16 @@ export function TextProperties({
 								</PropertyItem>
 							</div>
 						</PropertyGroup>
-					</PanelBaseView>
+
+					<CropMaskControls
+						editor={editor}
+						trackId={trackId}
+						elementId={element.id}
+						crop={element.crop}
+						maskShape={element.maskShape}
+						maskRadius={element.maskRadius}
+					/>
+				</PanelBaseView>
 				</TabsContent>
 				<TabsContent value="speech" className="mt-0 flex-1 overflow-auto">
 					<TextSpeechPanel elements={elementRefs} />

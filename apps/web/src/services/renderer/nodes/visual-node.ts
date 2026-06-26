@@ -1,6 +1,11 @@
 import type { CanvasRenderer } from "../canvas-renderer";
 import { BaseNode } from "./base-node";
-import type { Transform, ElementKeyframes } from "@/types/timeline";
+import type {
+	Transform,
+	ElementKeyframes,
+	CropRect,
+	MaskShape,
+} from "@/types/timeline";
 import {
 	interpolateKeyframes,
 	computeKeyframedTransform,
@@ -20,6 +25,9 @@ export interface VisualNodeParams {
 	filter?: string;
 	filterRange?: { start: number; end: number };
 	keyframes?: ElementKeyframes;
+	crop?: CropRect;
+	maskShape?: MaskShape;
+	maskRadius?: number;
 }
 
 export abstract class VisualNode<
@@ -60,7 +68,7 @@ export abstract class VisualNode<
 
 		const rawTransform = this.params.transform;
 		const rawOpacity = this.params.opacity;
-		const { filter, filterRange } = this.params;
+		const { filter, filterRange, crop, maskShape, maskRadius } = this.params;
 
 		// Determine effective transform & opacity via keyframes
 		let effectiveTransform = rawTransform;
@@ -117,10 +125,32 @@ export abstract class VisualNode<
 			effectiveTransform.position.y -
 			scaledHeight / 2;
 
-		renderer.context.globalAlpha = effectiveOpacity;
-
 		const centerX = x + scaledWidth / 2;
 		const centerY = y + scaledHeight / 2;
+
+		// Apply mask (clip path) before drawing
+		const hasMask = maskShape && maskShape !== "none";
+		if (hasMask) {
+			const ctx = renderer.context;
+			ctx.beginPath();
+			if (maskShape === "circle") {
+				ctx.ellipse(
+					centerX,
+					centerY,
+					Math.abs(scaledWidth) / 2,
+					Math.abs(scaledHeight) / 2,
+					0,
+					0,
+					Math.PI * 2,
+				);
+			} else if (maskShape === "rounded-rect") {
+				const r = (maskRadius ?? 0.1) * Math.min(scaledWidth, scaledHeight);
+				ctx.roundRect(x, y, scaledWidth, scaledHeight, r);
+			}
+			ctx.clip();
+		}
+
+		renderer.context.globalAlpha = effectiveOpacity;
 
 		const needsFlip =
 			effectiveTransform.flipX || effectiveTransform.flipY;
@@ -142,13 +172,39 @@ export abstract class VisualNode<
 			renderer.context.translate(-centerX, -centerY);
 		}
 
-		renderer.context.drawImage(
-			source,
-			x,
-			y,
-			scaledWidth,
-			scaledHeight,
-		);
+		// Cropped drawImage: sx/sy/sw/sh from source
+		const hasCrop =
+			crop &&
+			(crop.x !== 0 ||
+				crop.y !== 0 ||
+				crop.width !== 1 ||
+				crop.height !== 1);
+		if (hasCrop) {
+			const sx = crop!.x * sourceWidth;
+			const sy = crop!.y * sourceHeight;
+			const sw = crop!.width * sourceWidth;
+			const sh = crop!.height * sourceHeight;
+			renderer.context.drawImage(
+				source,
+				sx,
+				sy,
+				sw,
+				sh,
+				x,
+				y,
+				scaledWidth,
+				scaledHeight,
+			);
+		} else {
+			renderer.context.drawImage(
+				source,
+				x,
+				y,
+				scaledWidth,
+				scaledHeight,
+			);
+		}
+
 		renderer.context.restore();
 	}
 }

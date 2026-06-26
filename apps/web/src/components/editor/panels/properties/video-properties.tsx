@@ -14,8 +14,9 @@ import {
 import { clamp } from "@/utils/math";
 import { useEditor } from "@/hooks/use-editor";
 import type { ImageElement, VideoElement } from "@/types/timeline";
-import type { ElementKeyframes, KeyframeDef } from "@/types/timeline";
+import type { ElementKeyframes, KeyframeDef, CropRect, MaskShape } from "@/types/timeline";
 import { SPEED_PRESETS, formatSpeedLabel } from "@/lib/timeline/speed-utils";
+import { CropMaskControls } from "./crop-mask-controls";
 
 export function VideoProperties({
 	_element: element,
@@ -32,6 +33,16 @@ export function VideoProperties({
 	if (false as boolean) {
 		t("Add Keyframe");
 		t("Remove Keyframe");
+		t("Crop & Mask");
+		t("Crop X");
+		t("Crop Y");
+		t("Crop Width");
+		t("Crop Height");
+		t("Mask");
+		t("None");
+		t("Circle");
+		t("Rounded Rectangle");
+		t("Mask Radius");
 	}
 
 	const localTime = editor.playback.getCurrentTime() - element.startTime;
@@ -656,6 +667,15 @@ export function VideoProperties({
 						</PropertyItem>
 					</div>
 				</PropertyGroup>
+
+				<CropMaskControls
+					editor={editor}
+					trackId={trackId}
+					elementId={element.id}
+					crop={element.crop}
+					maskShape={element.maskShape}
+					maskRadius={element.maskRadius}
+				/>
 
 				{isVideoElement && (
 					<PropertyGroup title={t("Speed")} collapsible={false}>

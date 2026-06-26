@@ -27,14 +27,30 @@ export function AudioProperties({
 	const editor = useEditor();
 	const [, forceRender] = useReducer((x: number) => x + 1, 0);
 
+	// i18next-toolkit: forces extraction of labels (dead code, extract-only)
+	if (false as boolean) {
+		t("Pan");
+		t("Fade In");
+		t("Fade Out");
+	}
+
 	const isEditingVolume = useRef(false);
 	const isEditingSpeed = useRef(false);
+	const isEditingPan = useRef(false);
+	const isEditingFadeIn = useRef(false);
+	const isEditingFadeOut = useRef(false);
 
 	const volumeDraft = useRef("");
 	const speedDraft = useRef("");
+	const panDraft = useRef("");
+	const fadeInDraft = useRef("");
+	const fadeOutDraft = useRef("");
 
 	const initialVolumeRef = useRef<number | null>(null);
 	const initialSpeedRef = useRef<number | null>(null);
+	const initialPanRef = useRef<number | null>(null);
+	const initialFadeInRef = useRef<number | null>(null);
+	const initialFadeOutRef = useRef<number | null>(null);
 
 	const volumePercent = Math.round(element.volume * 100);
 	const volumeDisplay = isEditingVolume.current
@@ -45,6 +61,21 @@ export function AudioProperties({
 	const speedDisplay = isEditingSpeed.current
 		? speedDraft.current
 		: formatSpeedLabel({ rate: currentSpeed });
+
+	const currentPan = element.pan ?? 0;
+	const panDisplay = isEditingPan.current
+		? panDraft.current
+		: currentPan.toFixed(2);
+
+	const currentFadeIn = element.fadeInDuration ?? 0;
+	const fadeInDisplay = isEditingFadeIn.current
+		? fadeInDraft.current
+		: currentFadeIn.toFixed(1);
+
+	const currentFadeOut = element.fadeOutDuration ?? 0;
+	const fadeOutDisplay = isEditingFadeOut.current
+		? fadeOutDraft.current
+		: currentFadeOut.toFixed(1);
 
 	const updateElement = ({
 		updates,
@@ -73,6 +104,23 @@ export function AudioProperties({
 			updates: { playbackRate: newRate, duration: newDuration },
 			pushHistory,
 		});
+	};
+
+	const commitNumberField = ({
+		draft,
+		initial,
+		apply,
+	}: {
+		draft: string;
+		initial: React.RefObject<number | null>;
+		apply: (value: number) => void;
+	}) => {
+		if (initial.current === null) return;
+		const parsed = Number.parseFloat(draft);
+		if (!Number.isNaN(parsed)) {
+			apply(parsed);
+		}
+		initial.current = null;
 	};
 
 	return (
@@ -166,10 +214,171 @@ export function AudioProperties({
 					</div>
 				</PropertyGroup>
 
-<PropertyGroup title={t("Speed")} collapsible={false}>
-							<div className="space-y-6">
-								<PropertyItem direction="column">
-									<PropertyItemLabel>{t("Playback Speed")}</PropertyItemLabel>
+				<PropertyGroup title={t("Pan")} collapsible={false}>
+					<div className="space-y-6">
+						<PropertyItem direction="column">
+							<div className="flex items-center justify-between">
+								<PropertyItemLabel>{t("Pan")}</PropertyItemLabel>
+								<span className="text-muted-foreground text-xs">
+									L{currentPan < -0.05 ? ` ${currentPan.toFixed(2)}` : ""}
+									{Math.abs(currentPan) <= 0.05 ? " C" : ""}
+									{currentPan > 0.05 ? ` ${currentPan.toFixed(2)} R` : ""}
+								</span>
+							</div>
+							<PropertyItemValue>
+								<div className="flex items-center gap-2">
+									<Slider
+										value={[currentPan]}
+										min={-1}
+										max={1}
+										step={0.01}
+										onValueChange={([value]) => {
+											if (initialPanRef.current === null) {
+												initialPanRef.current = currentPan;
+											}
+											updateElement({
+												updates: { pan: value },
+												pushHistory: false,
+											});
+										}}
+										onValueCommit={([value]) => {
+											if (initialPanRef.current !== null) {
+												updateElement({
+													updates: { pan: initialPanRef.current },
+													pushHistory: false,
+												});
+												updateElement({
+													updates: { pan: value },
+													pushHistory: true,
+												});
+												initialPanRef.current = null;
+											}
+										}}
+										className="w-full"
+									/>
+									<span className="text-muted-foreground min-w-[1ch] text-right text-xs">-1</span>
+								</div>
+							</PropertyItemValue>
+						</PropertyItem>
+					</div>
+				</PropertyGroup>
+
+				<PropertyGroup title={t("Fade")} collapsible={false}>
+					<div className="space-y-4">
+						<PropertyItem>
+							<PropertyItemLabel>{t("Fade In")} (s)</PropertyItemLabel>
+							<PropertyItemValue>
+								<Input
+									type="number"
+									value={fadeInDisplay}
+									min={0}
+									max={element.duration}
+									step={0.1}
+									onFocus={() => {
+										isEditingFadeIn.current = true;
+										fadeInDraft.current = currentFadeIn.toFixed(1);
+										forceRender();
+									}}
+									onChange={(e) => {
+										fadeInDraft.current = e.target.value;
+										forceRender();
+										if (initialFadeInRef.current === null) {
+											initialFadeInRef.current = currentFadeIn;
+										}
+										const parsed = Number.parseFloat(e.target.value);
+										if (!Number.isNaN(parsed)) {
+											const clamped = clamp({ value: parsed, min: 0, max: element.duration });
+											updateElement({
+												updates: { fadeInDuration: clamped },
+												pushHistory: false,
+											});
+										}
+									}}
+									onBlur={() => {
+										if (initialFadeInRef.current !== null) {
+											const parsed = Number.parseFloat(fadeInDraft.current);
+											const value = Number.isNaN(parsed)
+												? currentFadeIn
+												: clamp({ value: parsed, min: 0, max: element.duration });
+											updateElement({
+												updates: { fadeInDuration: initialFadeInRef.current },
+												pushHistory: false,
+											});
+											updateElement({
+												updates: { fadeInDuration: value },
+												pushHistory: true,
+											});
+											initialFadeInRef.current = null;
+										}
+										isEditingFadeIn.current = false;
+										fadeInDraft.current = "";
+										forceRender();
+									}}
+									className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
+							</PropertyItemValue>
+						</PropertyItem>
+
+						<PropertyItem>
+							<PropertyItemLabel>{t("Fade Out")} (s)</PropertyItemLabel>
+							<PropertyItemValue>
+								<Input
+									type="number"
+									value={fadeOutDisplay}
+									min={0}
+									max={element.duration}
+									step={0.1}
+									onFocus={() => {
+										isEditingFadeOut.current = true;
+										fadeOutDraft.current = currentFadeOut.toFixed(1);
+										forceRender();
+									}}
+									onChange={(e) => {
+										fadeOutDraft.current = e.target.value;
+										forceRender();
+										if (initialFadeOutRef.current === null) {
+											initialFadeOutRef.current = currentFadeOut;
+										}
+										const parsed = Number.parseFloat(e.target.value);
+										if (!Number.isNaN(parsed)) {
+											const clamped = clamp({ value: parsed, min: 0, max: element.duration });
+											updateElement({
+												updates: { fadeOutDuration: clamped },
+												pushHistory: false,
+											});
+										}
+									}}
+									onBlur={() => {
+										if (initialFadeOutRef.current !== null) {
+											const parsed = Number.parseFloat(fadeOutDraft.current);
+											const value = Number.isNaN(parsed)
+												? currentFadeOut
+												: clamp({ value: parsed, min: 0, max: element.duration });
+											updateElement({
+												updates: { fadeOutDuration: initialFadeOutRef.current },
+												pushHistory: false,
+											});
+											updateElement({
+												updates: { fadeOutDuration: value },
+												pushHistory: true,
+											});
+											initialFadeOutRef.current = null;
+										}
+										isEditingFadeOut.current = false;
+										fadeOutDraft.current = "";
+										forceRender();
+									}}
+									className="bg-accent h-7 w-full [appearance:textfield] rounded-sm px-2 text-center !text-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+								/>
+							</PropertyItemValue>
+						</PropertyItem>
+					</div>
+				</PropertyGroup>
+
+				<PropertyGroup title={t("Speed")} collapsible={false}>
+					<div className="space-y-6">
+						<PropertyItem direction="column">
+							<PropertyItemLabel>{t("Playback Speed")}</PropertyItemLabel>
 							<PropertyItemValue>
 								<div className="flex flex-wrap gap-1.5">
 									{SPEED_PRESETS.map((preset) => {
