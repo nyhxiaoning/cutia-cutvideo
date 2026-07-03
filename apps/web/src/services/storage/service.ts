@@ -2,6 +2,7 @@ import type { TProject, TProjectMetadata } from "@/types/project";
 import { getProjectDurationFromScenes } from "@/lib/scenes";
 import type { MediaAsset } from "@/types/assets";
 import { IndexedDBAdapter } from "./indexeddb-adapter";
+import { IndexedDBFileAdapter } from "./indexeddb-file-adapter";
 import { OPFSAdapter } from "./opfs-adapter";
 import type {
 	MediaAssetData,
@@ -72,7 +73,10 @@ class StorageService {
 			this.config.version,
 		);
 
-		const mediaAssetsAdapter = new OPFSAdapter(`media-files-${projectId}`);
+		// OPFS requires secure context. Fall back to IndexedDB when unavailable
+		const mediaAssetsAdapter = OPFSAdapter.isSupported()
+			? new OPFSAdapter(`media-files-${projectId}`)
+			: new IndexedDBFileAdapter(`media-files-${projectId}`);
 
 		return { mediaMetadataAdapter, mediaAssetsAdapter };
 	}

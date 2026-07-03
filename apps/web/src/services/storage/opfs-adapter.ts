@@ -8,6 +8,11 @@ export class OPFSAdapter implements StorageAdapter<File> {
 	}
 
 	private async getDirectory(): Promise<FileSystemDirectoryHandle> {
+		if (!("storage" in navigator) || !navigator.storage) {
+			throw new Error(
+				"OPFS is not available in this context. Make sure you are using HTTPS or localhost.",
+			);
+		}
 		const opfsRoot = await navigator.storage.getDirectory();
 		return await opfsRoot.getDirectoryHandle(this.directoryName, {
 			create: true,

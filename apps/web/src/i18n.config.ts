@@ -15,7 +15,7 @@ export const i18nConfig = createI18nConfig({
 		"ru",
 		"it",
 	],
-	defaultLocale: "en",
+	defaultLocale: "zh",
 	localeDir: "./public/locales",
 	namespaces: ["translation"],
 	routingStrategy: "url-segment",

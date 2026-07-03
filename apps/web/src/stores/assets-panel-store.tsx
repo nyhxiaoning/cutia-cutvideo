@@ -4,6 +4,7 @@ import {
 	AiBrain01Icon,
 	ArrowRightDoubleIcon,
 	ClosedCaptionIcon,
+	FaceIdIcon,
 	Folder03Icon,
 	Happy01Icon,
 	HeadphonesIcon,
@@ -21,6 +22,7 @@ export const TAB_KEYS = [
 	"text",
 	"stickers",
 	"effects",
+	"face-effect",
 	"transitions",
 	"captions",
 	"filters",
@@ -43,6 +45,7 @@ const TAB_LABELS: Record<Tab, string> = {
 	text: "Text",
 	stickers: "Stickers",
 	effects: "Effects",
+	"face-effect": "Face Effect",
 	transitions: "Transitions",
 	captions: "Captions",
 	filters: "Filters",
@@ -71,6 +74,10 @@ export const tabs = {
 	effects: {
 		icon: createHugeiconsIcon({ icon: MagicWand05Icon }),
 		label: TAB_LABELS.effects,
+	},
+	"face-effect": {
+		icon: createHugeiconsIcon({ icon: FaceIdIcon }),
+		label: TAB_LABELS["face-effect"],
 	},
 	transitions: {
 		icon: createHugeiconsIcon({ icon: ArrowRightDoubleIcon }),
