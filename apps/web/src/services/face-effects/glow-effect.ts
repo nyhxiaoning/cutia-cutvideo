@@ -20,9 +20,7 @@ function hexToRgba(hex: string, alpha: number): string {
 	return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function getGlowRegionIndices(
-	glowType: GlowType,
-): number[] {
+function getGlowRegionIndices(glowType: GlowType): number[] {
 	switch (glowType) {
 		case "head":
 			return [
@@ -63,72 +61,67 @@ export function applyGlow(options: GlowOptions): HTMLCanvasElement {
 
 	// Step 1: Draw the source image
 	ctx.drawImage(source, 0, 0, imageWidth, imageHeight);
-
 	if (intensity < 0.01) return canvas;
 
-	// Step 2: Create an offscreen canvas for the glow mask
+	// Step 2: Build a glow mask on an offscreen canvas.
+	// The mask is filled with the glow colour so the blur picks it up.
 	const maskCanvas = document.createElement("canvas");
 	maskCanvas.width = imageWidth;
 	maskCanvas.height = imageHeight;
 	const maskCtx = maskCanvas.getContext("2d");
 	if (!maskCtx) return canvas;
 
-	// Step 3: Draw glow region as a filled path
 	const glowIndices = getGlowRegionIndices(glowType);
 	const validIndices = glowIndices.filter((i) => i < landmarks.length);
-
 	if (validIndices.length < 3) return canvas;
 
+	// Draw face contour path filled with the glow colour (full opacity)
 	maskCtx.beginPath();
-
-	const firstIdx = validIndices[0];
 	maskCtx.moveTo(
-		landmarks[firstIdx].x * imageWidth,
-		landmarks[firstIdx].y * imageHeight,
+		landmarks[validIndices[0]].x * imageWidth,
+		landmarks[validIndices[0]].y * imageHeight,
 	);
-
 	for (let i = 1; i < validIndices.length; i++) {
 		maskCtx.lineTo(
 			landmarks[validIndices[i]].x * imageWidth,
 			landmarks[validIndices[i]].y * imageHeight,
 		);
 	}
-
 	maskCtx.closePath();
-	maskCtx.fillStyle = "white";
+	maskCtx.fillStyle = color;
 	maskCtx.fill();
 
-	// Step 4: Apply blur to the mask to create glow spread
-	maskCtx.globalCompositeOperation = "source-over";
-
-	// For the glow effect, apply shadow blur
-	ctx.save();
-
-	// Draw the mask with shadow blur onto the main canvas
-	ctx.shadowBlur = radius * intensity;
-	ctx.shadowColor = hexToRgba(color, intensity);
-
-	// Use source-atop to only apply glow where the source image exists
-	ctx.globalCompositeOperation = "source-atop";
-	ctx.drawImage(maskCanvas, 0, 0);
-
-	ctx.restore();
-
-	// Step 5: Add an additional glow overlay for stronger effect
-	if (intensity > 0.3) {
-		ctx.save();
-		ctx.globalAlpha = intensity * 0.4;
-		ctx.drawImage(maskCanvas, 0, 0);
-		ctx.restore();
+	// Step 3: Blur the mask to create the glow spread.
+	// A larger radius = wider, softer glow.
+	if (radius > 1) {
+		maskCtx.save();
+		maskCtx.filter = `blur(${radius}px)`;
+		maskCtx.clearRect(0, 0, imageWidth, imageHeight);
+		// Redraw the same path with blur to create a soft glow field
+		maskCtx.beginPath();
+		maskCtx.moveTo(
+			landmarks[validIndices[0]].x * imageWidth,
+			landmarks[validIndices[0]].y * imageHeight,
+		);
+		for (let i = 1; i < validIndices.length; i++) {
+			maskCtx.lineTo(
+				landmarks[validIndices[i]].x * imageWidth,
+				landmarks[validIndices[i]].y * imageHeight,
+			);
+		}
+		maskCtx.closePath();
+		maskCtx.fillStyle = color;
+		maskCtx.fill();
+		maskCtx.restore();
 	}
 
+	// Step 4: Composite the glow over the source image using "lighter" (additive)
+	// so it feels like a real light bloom rather than a transparent overlay.
+	ctx.save();
+	ctx.globalCompositeOperation = "lighter";
+	ctx.globalAlpha = intensity;
+	ctx.drawImage(maskCanvas, 0, 0);
+	ctx.restore();
+
 	return canvas;
-}
-
-export function applyHeadGlow(options: Omit<GlowOptions, "glowType">): HTMLCanvasElement {
-	return applyGlow({ ...options, glowType: "head" });
-}
-
-export function applyBodyGlow(options: Omit<GlowOptions, "glowType">): HTMLCanvasElement {
-	return applyGlow({ ...options, glowType: "body" });
 }

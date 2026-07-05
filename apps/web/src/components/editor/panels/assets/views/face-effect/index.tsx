@@ -76,17 +76,16 @@ export function FaceEffectView() {
 	// Process when params or face result changes
 	const processEffect = useCallback(
 		(currentParams: FaceEffectParams) => {
-			if (!image || !faceResult || processingRef.current) return;
+			if (!image || !faceResult) return;
 			if (currentParams.enabledEffects.length === 0) {
 				setProcessedCanvas(null);
 				return;
 			}
 
 			processingRef.current = true;
-			setIsProcessing(true);
 
-			// Use requestAnimationFrame to avoid blocking UI
-			requestAnimationFrame(() => {
+			// Defer to avoid blocking the UI after toggling a button
+			setTimeout(() => {
 				try {
 					const canvas = document.createElement("canvas");
 					renderer.process({
@@ -102,7 +101,7 @@ export function FaceEffectView() {
 					processingRef.current = false;
 					setIsProcessing(false);
 				}
-			});
+			}, 0);
 		},
 		[image, faceResult, renderer],
 	);
@@ -117,8 +116,9 @@ export function FaceEffectView() {
 			}
 
 			debounceRef.current = setTimeout(() => {
-				processEffect(newParams);
-			}, 150);
+				setIsProcessing(true);
+				queueMicrotask(() => processEffect(newParams));
+			}, 200);
 		},
 		[processEffect],
 	);

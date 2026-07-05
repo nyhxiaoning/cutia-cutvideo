@@ -1,4 +1,4 @@
-import type { FaceDetectResult, FaceEffectParams } from "@/types/face-effect";
+import type { FaceDetectResult, FaceEffectParams, FaceEffectType } from "@/types/face-effect";
 import { applyGlow } from "./glow-effect";
 import { warpImage } from "./webgl-mesh-warp";
 
@@ -9,13 +9,15 @@ interface ProcessOptions {
 	outputCanvas: HTMLCanvasElement;
 }
 
-/**
- * FaceEffectRenderer combines warp and glow effects.
- *
- * Pipeline order:
- * 1. If big-head or big-face enabled: do WebGL warp on source
- * 2. If glow enabled: apply glow on (warped) result
- */
+const WARP_TYPES: Array<{ key: FaceEffectType; type: "big-head" | "left-cheek" | "right-cheek" | "eyes" | "nose" | "mouth"; intensityKey: keyof FaceEffectParams }> = [
+	{ key: "big-head", type: "big-head", intensityKey: "bigHeadIntensity" },
+	{ key: "left-cheek", type: "left-cheek", intensityKey: "leftCheekIntensity" },
+	{ key: "right-cheek", type: "right-cheek", intensityKey: "rightCheekIntensity" },
+	{ key: "eyes", type: "eyes", intensityKey: "eyesIntensity" },
+	{ key: "nose", type: "nose", intensityKey: "noseIntensity" },
+	{ key: "mouth", type: "mouth", intensityKey: "mouthIntensity" },
+];
+
 export class FaceEffectRenderer {
 	private warpCanvas: HTMLCanvasElement | null = null;
 
@@ -34,37 +36,30 @@ export class FaceEffectRenderer {
 		const imageWidth = landmarks.imageWidth;
 		const imageHeight = landmarks.imageHeight;
 
-		const hasBigHead =
-			params.enabledEffects.includes("big-head") &&
-			params.bigHeadIntensity > 0.01;
-
-		const hasBigFace =
-			params.enabledEffects.includes("big-face") &&
-			params.bigFaceIntensity > 0.01;
-
 		const hasGlow =
 			params.enabledEffects.includes("glow") &&
 			params.glowIntensity > 0.01;
 
-		// Determine the input for the pipeline
 		let currentSource: CanvasImageSource = source;
 
-		// Step 1: Warp (if enabled)
-		if (hasBigHead || hasBigFace) {
-			const warpCanvas = this.getWarpCanvas(imageWidth, imageHeight);
-			warpImage({
-				source: currentSource,
-				landmarks: landmarks.landmarks,
-				type: hasBigHead ? "big-head" : "big-face",
-				intensity: hasBigHead
-					? params.bigHeadIntensity
-					: params.bigFaceIntensity,
-				canvas: warpCanvas,
-			});
-			currentSource = warpCanvas;
+		// Run enabled warps sequentially (each one builds on the previous result)
+		for (const warp of WARP_TYPES) {
+			const enabled = params.enabledEffects.includes(warp.key);
+			const intensity = params[warp.intensityKey] as number;
+			if (enabled && intensity > 0.01) {
+				const warpCanvas = this.getWarpCanvas(imageWidth, imageHeight);
+				warpImage({
+					source: currentSource,
+					landmarks: landmarks.landmarks,
+					type: warp.type,
+					intensity,
+					canvas: warpCanvas,
+				});
+				currentSource = warpCanvas;
+			}
 		}
 
-		// Step 2: Glow (if enabled)
+		// Glow (if enabled)
 		if (hasGlow) {
 			applyGlow({
 				source: currentSource,
@@ -78,7 +73,6 @@ export class FaceEffectRenderer {
 				canvas: outputCanvas,
 			});
 		} else {
-			// No glow: just copy the current source to output
 			const ctx = outputCanvas.getContext("2d");
 			if (ctx) {
 				outputCanvas.width = imageWidth;
