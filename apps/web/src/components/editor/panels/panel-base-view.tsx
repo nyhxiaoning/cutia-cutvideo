@@ -26,7 +26,7 @@ function ViewContent({
 	className?: string;
 }) {
 	return (
-		<ScrollArea className="flex-1 scrollbar-hidden">
+		<ScrollArea className="flex-1 h-full">
 			<div className={cn("p-5", className)}>{children}</div>
 		</ScrollArea>
 	);

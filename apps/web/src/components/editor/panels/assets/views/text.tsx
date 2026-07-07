@@ -113,7 +113,7 @@ export function TextView() {
 	};
 
 	return (
-		<div className="group relative">
+		<div className="group relative h-full">
 			<OpenInEditor source="src/components/editor/panels/assets/views/text.tsx" line={8} />
 			<BaseView>
 				<div className="grid grid-cols-2 gap-3 p-3">

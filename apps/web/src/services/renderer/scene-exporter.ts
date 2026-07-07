@@ -11,6 +11,7 @@ import {
 	QUALITY_MEDIUM,
 	QUALITY_HIGH,
 	QUALITY_VERY_HIGH,
+	getFirstEncodableVideoCodec,
 } from "mediabunny";
 import type { RootNode } from "./nodes/root-node";
 import { CanvasRenderer } from "./canvas-renderer";
@@ -86,8 +87,26 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		const { fps } = this.renderer;
 		const frameCount = Math.ceil(rootNode.duration * fps);
 
+		// Probe for codec support — fall back to vp9/webm when avc is absent
+		const desiredCodec = this.format === "webm" ? "vp9" : "avc";
+		// Use even dimensions to avoid avc/hevc odd-dimension rejection
+		const w = Math.ceil(this.renderer.width / 2) * 2;
+		const h = Math.ceil(this.renderer.height / 2) * 2;
+		const codec = await getFirstEncodableVideoCodec([desiredCodec, "vp9", "vp8"], {
+			width: w,
+			height: h,
+			bitrate: qualityMap[this.quality],
+		});
+
+		if (!codec) {
+			throw new Error(
+				"VideoEncoder is not supported by this browser. " +
+				"Please try a different browser (Chrome/Edge recommended).",
+			);
+		}
+
 		const outputFormat =
-			this.format === "webm" ? new WebMOutputFormat() : new Mp4OutputFormat();
+			codec === "avc" ? new Mp4OutputFormat() : new WebMOutputFormat();
 
 		const output = new Output({
 			format: outputFormat,
@@ -95,7 +114,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		});
 
 		const videoSource = new CanvasSource(this.renderer.canvas, {
-			codec: this.format === "webm" ? "vp9" : "avc",
+			codec,
 			bitrate: qualityMap[this.quality],
 		});
 

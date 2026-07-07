@@ -49,7 +49,7 @@ export function StickersView() {
 	const { selectedCategory, setSelectedCategory } = useStickersStore();
 
 	return (
-		<div className="group relative">
+		<div className="group relative h-full">
 			<OpenInEditor source="src/components/editor/panels/assets/views/stickers.tsx" line={46} />
 			<BaseView
 			value={selectedCategory}

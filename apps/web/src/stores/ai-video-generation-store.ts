@@ -222,7 +222,15 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 						error instanceof Error
 							? error.message
 							: i18next.t("Video generation failed");
-					toast.error(message);
+
+					// Agnes AI: rate limited to 1 request/min. Give user a clear message.
+					if (message.includes("rate_limit_exceeded")) {
+						toast.error(i18next.t("Video generation rate limited"), {
+							description: i18next.t("Agnes AI allows 1 video generation per minute. Please wait before trying again."),
+						});
+					} else {
+						toast.error(message);
+					}
 					set({ isGenerating: false });
 				}
 				return;
@@ -274,6 +282,7 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					prompt: trimmedPrompt,
 					taskId: submitResult.taskId,
 					taskStatus: submitResult.status,
+					videoUrl: submitResult.videoUrl,
 					assetStatus: "pending",
 				};
 
@@ -281,6 +290,18 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					generatedVideos: [newVideo, ...state.generatedVideos],
 					isGenerating: false,
 				}));
+
+				// If the provider returned a video synchronously (e.g. Agnes), skip polling
+				if (submitResult.status === "succeeded" && submitResult.videoUrl) {
+					toast.success(i18next.t("Video generation completed"));
+					addVideoToAssets({
+						provider,
+						videoId,
+						videoUrl: submitResult.videoUrl,
+						characterId: selectedCharacterId,
+					});
+					return;
+				}
 
 				toast.success(i18next.t("Video generation task submitted"));
 
@@ -316,6 +337,44 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 		},
 	}),
 );
+
+function addVideoToAssets({
+	provider,
+	videoId,
+	videoUrl,
+	characterId,
+}: {
+	provider: ReturnType<typeof getVideoProvider>;
+	videoId: string;
+	videoUrl: string;
+	characterId?: string | null;
+}): void {
+	const currentVideo = useAIVideoGenerationStore
+		.getState()
+		.generatedVideos.find((v) => v.id === videoId);
+
+	useAIGenerationHistoryStore.getState().addEntry({
+		id: generateUUID(),
+		type: "video",
+		prompt: currentVideo?.prompt ?? "",
+		url: videoUrl,
+		provider: provider?.name ?? "",
+	});
+
+	void downloadAndAddToAssets({ videoId, videoUrl });
+
+	if (characterId) {
+		const generation: CharacterGeneration = {
+			id: generateUUID(),
+			type: "video",
+			prompt: currentVideo?.prompt ?? "",
+			url: videoUrl,
+			provider: provider?.name ?? "",
+			createdAt: new Date().toISOString(),
+		};
+		useCharacterStore.getState().addGeneration({ characterId, generation });
+	}
+}
 
 async function pollAndUpdate({
 	provider,

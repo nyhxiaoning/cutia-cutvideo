@@ -23,7 +23,7 @@ export const useAISettingsStore = create<AISettingsState>()(
 			imageApiKey: "",
 			videoProviderId: null,
 			videoApiKey: "",
-			devPlaceholderEnabled: IS_DEV,
+			devPlaceholderEnabled: false,
 
 			setImageProvider: (providerId) => set({ imageProviderId: providerId }),
 			setImageApiKey: (apiKey) => set({ imageApiKey: apiKey }),

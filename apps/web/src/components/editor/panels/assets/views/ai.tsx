@@ -991,8 +991,8 @@ function AIHistoryView() {
 	const videoEntries = entries.filter((entry) => entry.type === "video");
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-center justify-between">
+		<div className="flex flex-col gap-4 h-full">
+			<div className="flex items-center justify-between shrink-0">
 				<span className="text-muted-foreground text-xs font-medium">
 					{t("{{num}} items", { num: entries.length })}
 				</span>
@@ -1174,7 +1174,7 @@ export function AIView() {
 	const { t } = useTranslation();
 
 	return (
-		<div className="group relative">
+		<div className="group relative h-full">
 			<OpenInEditor source="src/components/editor/panels/assets/views/ai.tsx" line={1172} />
 			<BaseView
 			defaultTab="generate"

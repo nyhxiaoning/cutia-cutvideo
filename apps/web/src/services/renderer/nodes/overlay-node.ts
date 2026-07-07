@@ -316,7 +316,7 @@ export class OverlayNode extends BaseNode<OverlayNodeParams> {
 	}
 
 	private drawParticle(
-		ctx: CanvasRenderingContext2D,
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
 		p: Particle,
 		type: string,
 	): void {
@@ -418,7 +418,7 @@ export class OverlayNode extends BaseNode<OverlayNodeParams> {
 	}
 
 	private renderShake(
-		ctx: CanvasRenderingContext2D,
+		ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
 		width: number,
 		height: number,
 	): void {

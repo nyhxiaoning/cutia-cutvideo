@@ -7,13 +7,10 @@ type FaceLandmarkerInstance = {
 };
 
 let faceLandmarkerInstance: FaceLandmarkerInstance | null = null;
-let isLoaded = false;
-let isLoading = false;
 let loadPromise: Promise<void> | null = null;
 const readyCallbacks: Array<() => void> = [];
 
 function notifyReady(): void {
-	isLoaded = true;
 	for (const cb of readyCallbacks) {
 		cb();
 	}
@@ -21,10 +18,8 @@ function notifyReady(): void {
 }
 
 export async function loadFaceLandmarker(): Promise<void> {
-	if (isLoaded) return;
-	if (isLoading && loadPromise) return loadPromise;
-
-	isLoading = true;
+	if (faceLandmarkerInstance) return;
+	if (loadPromise) return loadPromise;
 
 	loadPromise = (async () => {
 		try {
@@ -50,12 +45,8 @@ export async function loadFaceLandmarker(): Promise<void> {
 
 			notifyReady();
 		} catch (error) {
-			isLoaded = false;
-			isLoading = false;
 			loadPromise = null;
 			throw error;
-		} finally {
-			isLoading = false;
 		}
 	})();
 
@@ -63,11 +54,11 @@ export async function loadFaceLandmarker(): Promise<void> {
 }
 
 export function isFaceLandmarkerReady(): boolean {
-	return isLoaded;
+	return faceLandmarkerInstance !== null;
 }
 
 export function onFaceLandmarkerReady(callback: () => void): void {
-	if (isLoaded) {
+	if (faceLandmarkerInstance) {
 		callback();
 	} else {
 		readyCallbacks.push(callback);
@@ -77,18 +68,29 @@ export function onFaceLandmarkerReady(callback: () => void): void {
 export async function detectFace(
 	source: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement,
 ): Promise<FaceDetectResult | null> {
-	if (!isLoaded) {
-		await loadFaceLandmarker();
-	}
-
 	if (!faceLandmarkerInstance) {
-		return null;
+		try {
+			await loadFaceLandmarker();
+		} catch {
+			return null;
+		}
+		if (!faceLandmarkerInstance) return null;
 	}
 
 	try {
+		// Ensure image is fully loaded
+		if (source instanceof HTMLImageElement) {
+			if (!source.complete || source.naturalWidth === 0) {
+				await new Promise<void>((resolve) => {
+					source.onload = () => resolve();
+					source.onerror = () => resolve();
+				});
+			}
+		}
+
 		const result = faceLandmarkerInstance.detect(source);
 
-		if (!result.faceLandmarks || result.faceLandmarks.length === 0) {
+		if (!result || !result.faceLandmarks || result.faceLandmarks.length === 0) {
 			return null;
 		}
 
@@ -102,8 +104,8 @@ export async function detectFace(
 
 		return {
 			landmarks,
-			imageWidth: source.width || source.naturalWidth || 0,
-			imageHeight: source.height || source.naturalHeight || 0,
+			imageWidth: "width" in source ? (source.width || 0) : ((source as HTMLImageElement).naturalWidth || 0),
+			imageHeight: "height" in source ? (source.height || 0) : ((source as HTMLImageElement).naturalHeight || 0),
 		};
 	} catch {
 		return null;

@@ -3,7 +3,7 @@ import { applyGlow } from "./glow-effect";
 import { warpImage } from "./webgl-mesh-warp";
 
 interface ProcessOptions {
-	source: TexImageSource;
+	source: CanvasImageSource | TexImageSource;
 	landmarks: FaceDetectResult;
 	params: FaceEffectParams;
 	outputCanvas: HTMLCanvasElement;
@@ -40,7 +40,7 @@ export class FaceEffectRenderer {
 			params.enabledEffects.includes("glow") &&
 			params.glowIntensity > 0.01;
 
-		let currentSource: CanvasImageSource = source;
+		let currentSource = source as TexImageSource;
 
 		// Run enabled warps sequentially (each one builds on the previous result)
 		for (const warp of WARP_TYPES) {
@@ -62,7 +62,7 @@ export class FaceEffectRenderer {
 		// Glow (if enabled)
 		if (hasGlow) {
 			applyGlow({
-				source: currentSource,
+				source: currentSource as CanvasImageSource,
 				landmarks: landmarks.landmarks,
 				color: params.glowColor,
 				intensity: params.glowIntensity,
@@ -77,7 +77,7 @@ export class FaceEffectRenderer {
 			if (ctx) {
 				outputCanvas.width = imageWidth;
 				outputCanvas.height = imageHeight;
-				ctx.drawImage(currentSource, 0, 0, imageWidth, imageHeight);
+				ctx.drawImage(currentSource as CanvasImageSource, 0, 0, imageWidth, imageHeight);
 			}
 		}
 

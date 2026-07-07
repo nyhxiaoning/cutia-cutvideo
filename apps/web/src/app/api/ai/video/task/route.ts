@@ -4,6 +4,10 @@ import { z } from "zod";
 const PROVIDER_TASK_URLS: Record<string, string> = {
 	seedance:
 		"https://ark.ap-southeast.bytepluses.com/api/v3/contents/generations/tasks",
+	wanxiang:
+		"https://dashscope.aliyuncs.com/compatible-mode/v1/async-task",
+	agnespoll:
+		"https://apihub.agnes-ai.com/agnesapi",
 };
 
 const querySchema = z.object({
@@ -43,7 +47,12 @@ export async function GET(request: NextRequest) {
 			);
 		}
 
-		const url = `${baseUrl}/${validation.data.taskId}`;
+		// Build the polling URL per provider
+		const url = validation.data.providerId === "wanxiang"
+			? `${baseUrl}?task_id=${validation.data.taskId}`
+			: validation.data.providerId === "agnespoll"
+				? `${baseUrl}?video_id=${validation.data.taskId}`
+			: `${baseUrl}/${validation.data.taskId}`;
 
 		const response = await fetch(url, {
 			method: "GET",

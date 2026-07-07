@@ -357,8 +357,8 @@ function getElementFadeDuration({
 	element: TimelineElement;
 	key: "fadeInDuration" | "fadeOutDuration";
 }): number | undefined {
-	if (key in element && typeof (element as Record<string, unknown>)[key] === "number") {
-		return (element as Record<string, unknown>)[key] as number;
+	if (key in element && typeof (element as unknown as Record<string, unknown>)[key] === "number") {
+		return (element as unknown as Record<string, unknown>)[key] as number;
 	}
 	return undefined;
 }

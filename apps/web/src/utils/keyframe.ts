@@ -48,7 +48,7 @@ export function computeKeyframedTransform(
 	const posX = interpolateKeyframes(keyframes.positionX ?? [], time);
 	const posY = interpolateKeyframes(keyframes.positionY ?? [], time);
 	if (posX !== null || posY !== null) {
-		result.position = {};
+		result.position = { x: 0, y: 0 };
 		if (posX !== null) result.position.x = posX;
 		if (posY !== null) result.position.y = posY;
 		hasAny = true;

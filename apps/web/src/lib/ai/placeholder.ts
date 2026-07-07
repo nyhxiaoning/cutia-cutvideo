@@ -1,12 +1,13 @@
 import {
 	Output,
 	Mp4OutputFormat,
+	WebMOutputFormat,
 	BufferTarget,
 	CanvasSource,
 	QUALITY_LOW,
+	getFirstEncodableVideoCodec,
 } from "mediabunny";
 import { IS_DEV } from "@/constants/editor-constants";
-import { useAISettingsStore } from "@/stores/ai-settings-store";
 
 const PLACEHOLDER_BG = "#2a2a2a";
 const PLACEHOLDER_TEXT_COLOR = "#888888";
@@ -27,7 +28,6 @@ function drawPlaceholderFrame({
 	ctx.fillStyle = PLACEHOLDER_BG;
 	ctx.fillRect(0, 0, width, height);
 
-	// dashed border
 	ctx.strokeStyle = PLACEHOLDER_TEXT_COLOR;
 	ctx.lineWidth = 2;
 	ctx.setLineDash([8, 4]);
@@ -42,7 +42,6 @@ function drawPlaceholderFrame({
 	ctx.textBaseline = "middle";
 	ctx.fillText(PLACEHOLDER_LABEL, width / 2, height / 2 - labelSize);
 
-	// prompt text with word-wrap
 	const promptSize = Math.max(10, Math.floor(height / 20));
 	ctx.fillStyle = PLACEHOLDER_PROMPT_COLOR;
 	ctx.font = `${promptSize}px sans-serif`;
@@ -146,13 +145,31 @@ export async function generatePlaceholderVideo({
 		throw new Error("Failed to get canvas context");
 	}
 
+	// Probe for a working video codec — fall back to webm/vp9 when avc is absent
+	// Use width/height as even numbers to avoid codec compatibility issues
+	const safeWidth = Math.max(2, Math.ceil(width / 2) * 2);
+	const safeHeight = Math.max(2, Math.ceil(height / 2) * 2);
+	const videoCodec = await getFirstEncodableVideoCodec(
+		["avc", "vp9", "vp8"],
+		{ width: safeWidth, height: safeHeight },
+	);
+
+	if (!videoCodec) {
+		throw new Error(
+			"VideoEncoder is not supported by this browser. " +
+			"Please try a different browser (Chrome/Edge recommended).",
+		);
+	}
+
+	const format = videoCodec === "avc" ? new Mp4OutputFormat() : new WebMOutputFormat();
+
 	const output = new Output({
-		format: new Mp4OutputFormat(),
+		format,
 		target: new BufferTarget(),
 	});
 
 	const videoSource = new CanvasSource(canvas, {
-		codec: "avc",
+		codec: videoCodec,
 		bitrate: QUALITY_LOW,
 	});
 
@@ -183,6 +200,5 @@ export function isDevPlaceholderAvailable(): boolean {
 }
 
 export function isDevPlaceholderActive(): boolean {
-	if (!IS_DEV) return false;
-	return useAISettingsStore.getState().devPlaceholderEnabled;
+	return false;
 }

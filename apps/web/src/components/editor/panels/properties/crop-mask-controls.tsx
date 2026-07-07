@@ -63,8 +63,8 @@ export function CropMaskControls({
 									});
 								}
 							}}
-							onBlur={() => {
-								const parsed = Number.parseFloat(e.target.value);
+							onBlur={(ev) => {
+								const parsed = Number.parseFloat(ev.target.value);
 								if (!Number.isNaN(parsed)) {
 									const v = clamp({ value: parsed, min: 0, max: 1 });
 									update({
@@ -96,8 +96,8 @@ export function CropMaskControls({
 									});
 								}
 							}}
-							onBlur={() => {
-								const parsed = Number.parseFloat(e.target.value);
+							onBlur={(ev) => {
+								const parsed = Number.parseFloat(ev.target.value);
 								if (!Number.isNaN(parsed)) {
 									const v = clamp({ value: parsed, min: 0, max: 1 });
 									update({
@@ -129,8 +129,8 @@ export function CropMaskControls({
 									});
 								}
 							}}
-							onBlur={() => {
-								const parsed = Number.parseFloat(e.target.value);
+							onBlur={(ev) => {
+								const parsed = Number.parseFloat(ev.target.value);
 								if (!Number.isNaN(parsed)) {
 									const v = clamp({ value: parsed, min: 0, max: 1 });
 									update({
@@ -162,8 +162,8 @@ export function CropMaskControls({
 									});
 								}
 							}}
-							onBlur={() => {
-								const parsed = Number.parseFloat(e.target.value);
+							onBlur={(ev) => {
+								const parsed = Number.parseFloat(ev.target.value);
 								if (!Number.isNaN(parsed)) {
 									const v = clamp({ value: parsed, min: 0, max: 1 });
 									update({

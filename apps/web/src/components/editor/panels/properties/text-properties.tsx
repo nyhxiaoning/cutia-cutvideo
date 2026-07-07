@@ -48,6 +48,8 @@ export function TextProperties({
 	elements: TextElementRef[];
 }) {
 	const element = elementRefs[0].element;
+	const firstRef = elementRefs[0];
+	const trackId = firstRef.trackId;
 
 	const { t } = useTranslation();
 	const editor = useEditor();

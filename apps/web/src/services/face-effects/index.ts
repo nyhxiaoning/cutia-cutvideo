@@ -2,4 +2,4 @@ export { loadFaceLandmarker, isFaceLandmarkerReady, onFaceLandmarkerReady, detec
 export type { FaceDetectionCallbacks } from "./face-landmarker";
 export { FaceEffectRenderer } from "./renderer";
 export { warpImage } from "./webgl-mesh-warp";
-export { applyGlow, applyHeadGlow, applyBodyGlow } from "./glow-effect";
+export { applyGlow } from "./glow-effect";
