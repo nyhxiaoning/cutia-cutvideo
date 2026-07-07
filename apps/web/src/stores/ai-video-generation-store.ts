@@ -10,7 +10,6 @@ import { getVideoProvider } from "@/lib/ai/providers";
 import type { VideoTaskStatus } from "@/lib/ai/providers/types";
 import { pollVideoTask } from "@/lib/ai/providers/seedance";
 import { processMediaAssets } from "@/lib/media/processing";
-import { uploadReferenceImage } from "@/lib/media/upload-reference";
 import { fetchWithProxyFallback } from "@/lib/media/url-import";
 import { useAISettingsStore } from "./ai-settings-store";
 import { useAIGenerationHistoryStore } from "./ai-generation-history-store";
@@ -137,7 +136,7 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 								const prev = get().referenceImagePreview;
 								if (prev) URL.revokeObjectURL(prev);
 								const file = new File([blob], `character-${id}.png`, {
-									type: blob.type || "image/png",
+										ype: blob.type || "image/png",
 								});
 								set({
 									referenceImage: file,
@@ -189,7 +188,7 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					const editor = EditorCore.getInstance();
 					const project = editor.project.getActiveOrNull();
 					if (!project) {
-						toast.error(i18next.t("No active project"));
+							oast.error(i18next.t("No active project"));
 						set({ isGenerating: false });
 						return;
 					}
@@ -208,8 +207,8 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					const newVideo: GeneratedVideo = {
 						id: videoId,
 						prompt: trimmedPrompt,
-						taskId: "placeholder",
-						taskStatus: "succeeded",
+							askId: "placeholder",
+							askStatus: "succeeded",
 						assetStatus: "added",
 					};
 					set((state) => ({
@@ -225,11 +224,11 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 
 					// Agnes AI: rate limited to 1 request/min. Give user a clear message.
 					if (message.includes("rate_limit_exceeded")) {
-						toast.error(i18next.t("Video generation rate limited"), {
+							oast.error(i18next.t("Video generation rate limited"), {
 							description: i18next.t("Agnes AI allows 1 video generation per minute. Please wait before trying again."),
 						});
 					} else {
-						toast.error(message);
+							oast.error(message);
 					}
 					set({ isGenerating: false });
 				}
@@ -259,11 +258,15 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					referenceImageUrl = await resolveCharacterReferenceUrl({
 						characterId: selectedCharacterId,
 					});
-				} else if (referenceImage) {
-					referenceImageUrl = await uploadReferenceImage({
-						file: referenceImage,
-					});
-				}
+					} else if (referenceImage) {
+						// Convert to base64 data URI — avoids R2 upload (SSL issue)
+						referenceImageUrl = await new Promise<string>((resolve, reject) => {
+							const reader = new FileReader();
+							reader.onload = () => resolve(reader.result as string);
+							reader.onerror = () => reject(new Error("Failed to read image"));
+							reader.readAsDataURL(referenceImage);
+						});
+					}
 
 				const submitResult = await provider.submitVideoTask({
 					request: {
@@ -400,7 +403,7 @@ async function pollAndUpdate({
 				updateVideo({
 					videoId,
 					updates: {
-						taskStatus: result.status,
+							askStatus: result.status,
 						videoUrl: result.videoUrl,
 						error: result.error,
 					},

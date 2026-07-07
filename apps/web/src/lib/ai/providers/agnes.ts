@@ -74,37 +74,12 @@ export const agnesImageProvider: AIImageProvider = {
 
 // ---------------------------------------------------------------------------
 // Video Provider
-//   Server-side submit + poll via /api/ai/video/agnes
-//   Same request body format as Python FastAPI server.py,
-//   returns { video: url, message: "生成成功！时长: X秒" }
 //
-//   Text-to-video: JSON body
-//   Image-to-video: FormData (same as Python /agnes-api/image2video/with_image)
+// Two modes:
+//   1. Text-to-video (no image) — browser fetch to Agnes API (sync response)
+//   2. Image-to-video (data: URI) — POST to /api/ai/video/agnes-image2video
+//      (server route, handles FormData → submit → poll → return)
 // ---------------------------------------------------------------------------
-
-function buildFormData(
-	request: VideoGenerationRequest,
-	apiKey: string,
-): FormData {
-	const fd = new FormData();
-	fd.set("api_key", apiKey);
-	fd.set("base_url", UPSTREAM_BASE);
-	fd.set("model", VIDEO_MODEL);
-	fd.set("prompt", request.prompt);
-	fd.set("negative_prompt", "");
-	fd.set("image_url", "");
-	fd.set("resolution_preset", request.resolution ?? "720p");
-	fd.set("ratio", request.aspectRatio ?? "16:9");
-	fd.set("duration", String(request.duration ?? 5));
-	fd.set("frame_rate", "24");
-	fd.set("steps", "50");
-	fd.set("dim_values", JSON.stringify(new Array(12).fill("不指定")));
-	// referenceImageUrl could be a remote URL, a data: URI, or empty
-	if (request.referenceImageUrl) {
-		fd.set("image_url", request.referenceImageUrl);
-	}
-	return fd;
-}
 
 export const agnesVideoProvider: AIVideoProvider = {
 	id: "agnes-video",
@@ -121,35 +96,147 @@ export const agnesVideoProvider: AIVideoProvider = {
 	}): Promise<VideoTaskResult> {
 		if (!apiKey) throw new Error("Agnes API key is not configured");
 
-		const body = buildFormData(request, apiKey);
+		// Image-to-video: send file through server route (handles submit + poll)
+		if (request.referenceImageUrl?.startsWith("data:")) {
+			const resp = await fetch(request.referenceImageUrl);
+			const blob = await resp.blob();
 
-		const response = await fetch("/api/ai/video/agnes", {
+			const fd = new FormData();
+			fd.set("api_key", apiKey);
+			fd.set("base_url", UPSTREAM_BASE);
+			fd.set("model", VIDEO_MODEL);
+			fd.set("prompt", request.prompt);
+			fd.set("negative_prompt", "");
+			fd.set("image_url", "");
+			fd.set("resolution_preset", request.resolution ?? "720p");
+			fd.set("ratio", request.aspectRatio ?? "16:9");
+			fd.set("duration", String(request.duration ?? 5));
+			fd.set("frame_rate", "24");
+			fd.set("steps", "50");
+			fd.set("dim_values", JSON.stringify(new Array(12).fill("不指定")));
+			fd.set("file", blob, "reference.png");
+
+			const response = await fetch("/api/ai/video/agnes-image2video", {
+				method: "POST",
+				body: fd,
+			});
+
+			if (!response.ok) {
+				const data = await response.json().catch(() => null);
+				throw new Error(
+					data?.error ?? `Agnes video error: HTTP ${response.status}`,
+				);
+			}
+
+			const data: Record<string, unknown> = await response.json();
+			return {
+				taskId: "agnes-sync",
+				status: "succeeded",
+				videoUrl: String(data.video ?? ""),
+			};
+		}
+
+		// Text-to-video: direct browser fetch (sync from upstream)
+		const payload: Record<string, unknown> = {
+			model: VIDEO_MODEL,
+			prompt: request.prompt,
+			width: 1152,
+			height: 768,
+			num_frames: 121,
+			frame_rate: 24,
+		};
+
+		const response = await fetch(`${UPSTREAM_BASE}/videos`, {
 			method: "POST",
-			body,
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${apiKey}`,
+			},
+			body: JSON.stringify(payload),
 		});
 
 		if (!response.ok) {
-			const data = await response.json().catch(() => null);
-			throw new Error(
-				data?.error ?? `Agnes video error: HTTP ${response.status}`,
-			);
+			const text = await response.text();
+			throw new Error(`Agnes video error: ${response.status} - ${text}`);
 		}
 
 		const data: Record<string, unknown> = await response.json();
 
-		return {
-			taskId: "agnes-sync",
-			status: "succeeded",
-			videoUrl: String(data.video ?? ""),
-		};
+		// Sync response
+		const videoUrl = String(
+			data.video ??
+				data.video_url ??
+				(data.data as Record<string, unknown> | undefined)?.video_url ??
+				"",
+		);
+		if (videoUrl) {
+			return { taskId: "agnes-sync", status: "succeeded", videoUrl };
+		}
+
+		// Async — needs polling (for older models)
+		const videoId =
+			data.id ??
+			data.video_id ??
+			(data.data as Record<string, unknown> | undefined)?.id ??
+			(data.data as Record<string, unknown> | undefined)?.video_id;
+
+		if (!videoId) {
+			throw new Error(`Agnes returned no result: ${JSON.stringify(data)}`);
+		}
+
+		return { taskId: String(videoId), status: "pending" };
 	},
 
 	async getVideoTask({
 		taskId,
+		apiKey,
 	}: {
 		taskId: string;
 		apiKey: string;
 	}): Promise<VideoTaskResult> {
-		return { taskId, status: "succeeded" };
+		// Server route handles all polling — this is only called for
+		// fallback text-to-video poll via browser (uncommon)
+		const response = await fetch(
+			`https://apihub.agnes-ai.com/agnesapi?video_id=${taskId}`,
+			{
+				headers: { Authorization: `Bearer ${apiKey}` },
+			},
+		);
+
+		if (!response.ok) {
+			if (response.status === 404) {
+				return { taskId, status: "pending" };
+			}
+			const text = await response.text();
+			throw new Error(`Agnes poll error: ${response.status} - ${text}`);
+		}
+
+		const data: Record<string, unknown> = await response.json();
+		const status = String(data.status ?? "pending").toLowerCase();
+
+		const result: VideoTaskResult = { taskId, status: "pending" };
+
+		if (["succeeded", "completed"].includes(status)) {
+			const videoUrl =
+				data.url ??
+				data.video_url ??
+				(data.data as Record<string, unknown> | undefined)?.video_url ??
+				(data.data as Record<string, unknown> | undefined)?.url ??
+				"";
+			result.status = "succeeded";
+			result.videoUrl = String(videoUrl);
+		} else if (["failed", "error"].includes(status)) {
+			result.status = "failed";
+			const err =
+				typeof data.error === "object" && data.error !== null
+					? (data.error as Record<string, unknown>)
+					: undefined;
+			result.error =
+				(typeof err?.message === "string" ? err.message : undefined) ??
+				(typeof data.message === "string" ? data.message : undefined) ??
+				"Video generation failed";
+		}
+
+		return result;
 	},
 };

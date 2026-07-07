@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { NodeHttpHandler } from "@smithy/node-http-handler";
 import { webEnv } from "@cutia/env/web";
 
 function getR2Config() {
@@ -43,7 +44,12 @@ function getR2Client(): S3Client {
 			accessKeyId: config.R2_ACCESS_KEY_ID,
 			secretAccessKey: config.R2_SECRET_ACCESS_KEY,
 		},
-		// ponytail: S3Client default maxAttempts = 3, exponential backoff
+		// Use Node.js http handler instead of fetch (Bun's BoringSSL is
+		// incompatible with Cloudflare R2's TLS cipher suite)
+		requestHandler: new NodeHttpHandler({
+			connectionTimeout: 10_000,
+			requestTimeout: 30_000,
+		}),
 	});
 	return cachedClient;
 }
