@@ -1,5 +1,6 @@
 export const STICKER_CATEGORIES = [
 	"all",
+	"image",
 	"general",
 	"brands",
 	"emoji",
@@ -10,6 +11,7 @@ export const STICKER_CATEGORY_CONFIG: Record<
 	string | undefined
 > = {
 	all: undefined,
+	image: undefined,
 	general: "General",
 	brands: "Brands / Social",
 	emoji: "Emoji",

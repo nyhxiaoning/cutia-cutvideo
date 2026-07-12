@@ -9,6 +9,7 @@ import {
 } from "@/lib/iconify-api";
 import { EditorCore } from "@/core";
 import { buildStickerElement } from "@/lib/timeline/element-utils";
+import { generateUUID } from "@/utils/id";
 import { STICKER_CATEGORY_CONFIG } from "@/constants/stickers-constants";
 import type { StickerCategory } from "@/types/stickers";
 
@@ -40,6 +41,7 @@ interface StickersStore {
 	loadCollection: ({ prefix }: { prefix: string }) => Promise<void>;
 	searchStickers: ({ query }: { query: string }) => Promise<void>;
 	addStickerToTimeline: ({ iconName }: { iconName: string }) => void;
+	addImageStickerToTimeline: ({ file }: { file: File }) => void;
 	addToRecentStickers: ({ iconName }: { iconName: string }) => void;
 	clearRecentStickers: () => void;
 }
@@ -158,6 +160,36 @@ export const useStickersStore = create<StickersStore>((set, get) => ({
 		} finally {
 			set({ addingSticker: null });
 		}
+	},
+
+	addImageStickerToTimeline: ({ file }: { file: File }) => {
+		const objectUrl = URL.createObjectURL(file);
+		const editor = EditorCore.getInstance();
+		const currentTime = editor.playback.getCurrentTime();
+
+		const stickerTrack = editor.timeline.getTracks().find((t) => t.type === "sticker");
+		const trackId = stickerTrack
+			? stickerTrack.id
+			: editor.timeline.addTrack({ type: "sticker" });
+
+		editor.timeline.insertElement({
+			placement: { mode: "explicit", trackId },
+			element: {
+				type: "sticker",
+				name: file.name,
+				iconName: `upload:${file.name}`,
+				mediaId: generateUUID(),
+				url: objectUrl,
+				duration: 5,
+				startTime: currentTime,
+				trimStart: 0,
+				trimEnd: 0,
+				transform: { scale: 1, position: { x: 0, y: 0 }, rotate: 0 },
+				opacity: 1,
+			},
+		});
+
+		get().addToRecentStickers({ iconName: `upload:${file.name}` });
 	},
 
 	addToRecentStickers: ({ iconName }: { iconName: string }) => {

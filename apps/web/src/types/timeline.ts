@@ -218,6 +218,9 @@ export interface StickerElement extends BaseTimelineElement {
 	transform: Transform;
 	opacity: number;
 	color?: string;
+	/** For uploaded image stickers */
+	mediaId?: string;
+	url?: string;
 }
 
 export interface OverlayElement extends BaseTimelineElement {

@@ -222,6 +222,7 @@ export function buildScene(params: BuildSceneParams) {
 						transform: element.transform,
 						opacity: element.opacity,
 						color: element.color,
+						url: element.url,
 						keyframes: element.keyframes,
 						crop: element.crop,
 						maskShape: element.maskShape,

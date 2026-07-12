@@ -4,6 +4,7 @@ import { VisualNode, type VisualNodeParams } from "./visual-node";
 export interface StickerNodeParams extends VisualNodeParams {
 	iconName: string;
 	color?: string;
+	url?: string;
 }
 
 export class StickerNode extends VisualNode<StickerNodeParams> {
@@ -19,16 +20,22 @@ export class StickerNode extends VisualNode<StickerNodeParams> {
 		const image = new Image();
 		image.crossOrigin = "anonymous";
 		this.image = image;
-		const color = this.params.color
-			? `&color=${encodeURIComponent(this.params.color)}`
-			: "";
-		const url = `https://api.iconify.design/${this.params.iconName}.svg?width=200&height=200${color}`;
+
+		if (this.params.url) {
+			// Uploaded image sticker
+			image.src = this.params.url;
+		} else {
+			// Iconify sticker
+			const color = this.params.color
+				? `&color=${encodeURIComponent(this.params.color)}`
+				: "";
+			image.src = `https://api.iconify.design/${this.params.iconName}.svg?width=200&height=200${color}`;
+		}
 
 		await new Promise<void>((resolve, reject) => {
 			image.onload = () => resolve();
 			image.onerror = () =>
 				reject(new Error(`Failed to load sticker: ${this.params.iconName}`));
-			image.src = url;
 		});
 	}
 
@@ -48,9 +55,9 @@ export class StickerNode extends VisualNode<StickerNodeParams> {
 		this.renderVisual({
 			renderer,
 			source: this.image,
-			sourceWidth: 200,
-			sourceHeight: 200,
-				elementLocalTime: time - this.params.timeOffset,
+			sourceWidth: this.image.naturalWidth || 200,
+			sourceHeight: this.image.naturalHeight || 200,
+			elementLocalTime: time - this.params.timeOffset,
 		});
 	}
 }
