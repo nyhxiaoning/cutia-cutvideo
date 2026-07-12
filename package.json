@@ -8,6 +8,7 @@
   "scripts": {
     "dev:web": "turbo run dev --filter=@cutia/web",
     "build:web": "turbo run build --filter=@cutia/web",
+    "build": "turbo run build --filter=@cutia/web",
     "dev:tools": "turbo run dev --filter=@cutia/tools",
     "build:tools": "turbo run build --filter=@cutia/tools",
     "start:tools": "turbo run start --filter=@cutia/tools",
