@@ -102,8 +102,9 @@ export class VideoCache {
 	}): Promise<WrappedCanvas | null> {
 		let ve = this.videoElements.get(mediaId);
 		if (!ve) {
-			ve = await this.initializeVideoElement({ mediaId, file });
-			if (!ve) return null;
+			const initialized = await this.initializeVideoElement({ mediaId, file });
+			if (!initialized) return null;
+			ve = initialized;
 		}
 
 		const { video } = ve;
@@ -331,7 +332,7 @@ export class VideoCache {
 		time: number;
 	}): Promise<WrappedCanvas | null> {
 		try {
-			const frame = await sinkData.sink.seek(time);
+			const frame = await sinkData.sink.getCanvas(time);
 			sinkData.currentFrame = frame;
 			sinkData.lastTime = time;
 			sinkData.iterator = null;

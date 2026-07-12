@@ -395,7 +395,7 @@ export function SelectionOverlay({
 		<>
 			{visibleElements.map(({ track, element }) => {
 				const media =
-					"mediaId" in element
+					"mediaId" in element && element.mediaId
 						? mediaMap.get(element.mediaId)
 						: undefined;
 

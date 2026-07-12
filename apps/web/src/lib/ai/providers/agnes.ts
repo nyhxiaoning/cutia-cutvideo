@@ -197,7 +197,7 @@ export const agnesVideoProvider: AIVideoProvider = {
 		// Server route handles all polling — this is only called for
 		// fallback text-to-video poll via browser (uncommon)
 		const response = await fetch(
-			`https://apihub.agnes-ai.com/agnesapi?video_id=${taskId}`,
+			`/api/ai/video/task?providerId=agnespoll&taskId=${taskId}`,
 			{
 				headers: { Authorization: `Bearer ${apiKey}` },
 			},

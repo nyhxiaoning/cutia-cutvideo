@@ -1,0 +1,21 @@
+"use client";
+
+import { BasePage } from "@/app/base-page";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TranscriptionPlayground } from "./_components/transcription-playground";
+
+export function DevPlayground() {
+	return (
+		<BasePage title="Dev Playground" maxWidth="6xl">
+			<Tabs defaultValue="transcription">
+				<TabsList>
+					<TabsTrigger value="transcription">Transcription</TabsTrigger>
+				</TabsList>
+
+				<TabsContent value="transcription" className="mt-6">
+					<TranscriptionPlayground />
+				</TabsContent>
+			</Tabs>
+		</BasePage>
+	);
+}

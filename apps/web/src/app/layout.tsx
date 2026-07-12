@@ -33,7 +33,12 @@ export default async function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const locale = await getLocale();
+	let locale = i18nConfig.defaultLocale;
+	try {
+		locale = await getLocale();
+	} catch {
+		// Static generation — no request context available
+	}
 
 	return (
 		<html lang={locale} suppressHydrationWarning>

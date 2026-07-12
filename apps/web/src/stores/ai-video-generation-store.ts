@@ -136,7 +136,7 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 								const prev = get().referenceImagePreview;
 								if (prev) URL.revokeObjectURL(prev);
 								const file = new File([blob], `character-${id}.png`, {
-										ype: blob.type || "image/png",
+									type: blob.type || "image/png",
 								});
 								set({
 									referenceImage: file,
@@ -188,7 +188,7 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					const editor = EditorCore.getInstance();
 					const project = editor.project.getActiveOrNull();
 					if (!project) {
-							oast.error(i18next.t("No active project"));
+							toast.error(i18next.t("No active project"));
 						set({ isGenerating: false });
 						return;
 					}
@@ -207,8 +207,8 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 					const newVideo: GeneratedVideo = {
 						id: videoId,
 						prompt: trimmedPrompt,
-							askId: "placeholder",
-							askStatus: "succeeded",
+						taskId: "placeholder",
+						taskStatus: "succeeded",
 						assetStatus: "added",
 					};
 					set((state) => ({
@@ -224,11 +224,11 @@ export const useAIVideoGenerationStore = create<AIVideoGenerationState>()(
 
 					// Agnes AI: rate limited to 1 request/min. Give user a clear message.
 					if (message.includes("rate_limit_exceeded")) {
-							oast.error(i18next.t("Video generation rate limited"), {
+							toast.error(i18next.t("Video generation rate limited"), {
 							description: i18next.t("Agnes AI allows 1 video generation per minute. Please wait before trying again."),
 						});
 					} else {
-							oast.error(message);
+							toast.error(message);
 					}
 					set({ isGenerating: false });
 				}
@@ -403,7 +403,7 @@ async function pollAndUpdate({
 				updateVideo({
 					videoId,
 					updates: {
-							askStatus: result.status,
+							taskStatus: result.status,
 						videoUrl: result.videoUrl,
 						error: result.error,
 					},

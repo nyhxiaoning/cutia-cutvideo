@@ -4,7 +4,7 @@ import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 import Image from "next/image";
 import { Link, useRouter } from "@/lib/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { MigrationDialog } from "@/components/editor/dialogs/migration-dialog";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,7 @@ const VIEW_MODE_OPTIONS = [
 export default function ProjectsPage() {
 	const { searchQuery, sortKey, sortOrder, viewMode } = useProjectsStore();
 	const editor = useEditor();
+	const { t } = useTranslation();
 	const [isGitHubSyncDialogOpen, setIsGitHubSyncDialogOpen] = useState(false);
 	const [isSyncing, setIsSyncing] = useState({ pull: false, push: false });
 

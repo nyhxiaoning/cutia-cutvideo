@@ -19,9 +19,8 @@ const webEnvSchema = z.object({
 	BETTER_AUTH_SECRET: z.string().optional(),
 	UPSTASH_REDIS_REST_URL: z.url(),
 	UPSTASH_REDIS_REST_TOKEN: z.string(),
-	// 默认写入两个配置地址：
-	FREESOUND_CLIENT_ID: z.string().default("xMgo2rK4L7PbQMrSLEwg"),
-	FREESOUND_API_KEY: z.string().default("4I2LAJznhq0A2VKgi3UvMCeMm3SLWbUI82ZNjPHk"),
+	FREESOUND_CLIENT_ID: z.string().optional(),
+	FREESOUND_API_KEY: z.string().optional(),
 
 	// Cloudflare R2
 	R2_ACCOUNT_ID: z.string().optional(),
