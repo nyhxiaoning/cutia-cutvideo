@@ -638,3 +638,33 @@ function mixAudioChannels({
 		}
 	}
 }
+
+/**
+ * Slice a portion of an AudioBuffer into a new AudioBuffer.
+ */
+export async function sliceAudioBuffer(
+	source: AudioBuffer,
+	startTime: number,
+	duration: number,
+): AudioBuffer {
+	const sampleRate = source.sampleRate;
+	const numberOfChannels = source.numberOfChannels;
+	const startSample = Math.floor(startTime * sampleRate);
+	const lengthSamples = Math.floor(duration * sampleRate);
+	const clampedLength = Math.min(
+		lengthSamples,
+		Math.max(0, source.length - startSample),
+	);
+
+	if (clampedLength <= 0) {
+		return source;
+	}
+
+	const ctx = new OfflineAudioContext(numberOfChannels, clampedLength, sampleRate);
+	const src = ctx.createBufferSource();
+	src.buffer = source;
+	src.connect(ctx.destination);
+	src.start(0, startTime, duration);
+
+	return ctx.startRendering();
+}

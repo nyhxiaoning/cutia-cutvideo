@@ -5,11 +5,10 @@ import "./globals.css";
 import { baseMetaData } from "./metadata";
 import { BotIdClient } from "botid/client";
 import { Inter } from "next/font/google";
-import {
-	initServerI18n,
-	getLocale,
-} from "@i18next-toolkit/nextjs-approuter/server";
+import { initServerI18n } from "@i18next-toolkit/nextjs-approuter/server";
 import { i18nConfig } from "../i18n.config";
+
+initServerI18n(i18nConfig);
 
 const siteFont = Inter({ subsets: ["latin"] });
 
@@ -18,8 +17,6 @@ export const metadata = baseMetaData;
 export const viewport: Viewport = {
 	viewportFit: "cover",
 };
-
-initServerI18n(i18nConfig);
 
 const protectedRoutes = [
 	{
@@ -33,12 +30,7 @@ export default async function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	let locale = i18nConfig.defaultLocale;
-	try {
-		locale = await getLocale();
-	} catch {
-		// Static generation — no request context available
-	}
+	const locale = i18nConfig.defaultLocale;
 
 	return (
 		<html lang={locale} suppressHydrationWarning>

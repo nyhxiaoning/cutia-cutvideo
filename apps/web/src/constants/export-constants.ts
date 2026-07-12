@@ -3,6 +3,8 @@ import type { ExportOptions } from "@/types/export";
 export const DEFAULT_EXPORT_OPTIONS = {
 	format: "mp4",
 	quality: "high",
+	startTime: 0,
+	endTime: 0,
 	includeAudio: true,
 } satisfies ExportOptions;
 

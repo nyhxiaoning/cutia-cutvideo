@@ -25,6 +25,8 @@ type ExportParams = {
 	fps: number;
 	format: ExportFormat;
 	quality: ExportQuality;
+	startTime?: number;
+	duration?: number;
 	shouldIncludeAudio?: boolean;
 	audioBuffer?: AudioBuffer;
 };
@@ -71,6 +73,8 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private renderer: CanvasRenderer;
 	private format: ExportFormat;
 	private quality: ExportQuality;
+	private startTime: number;
+	private duration: number;
 	private shouldIncludeAudio: boolean;
 	private audioBuffer?: AudioBuffer;
 
@@ -82,6 +86,8 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 		fps,
 		format,
 		quality,
+		startTime = 0,
+		duration = 0,
 		shouldIncludeAudio,
 		audioBuffer,
 	}: ExportParams) {
@@ -95,6 +101,8 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		this.format = format;
 		this.quality = quality;
+		this.startTime = startTime;
+		this.duration = duration;
 		this.shouldIncludeAudio = shouldIncludeAudio ?? false;
 		this.audioBuffer = audioBuffer;
 	}
@@ -105,12 +113,23 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 	async export({
 		rootNode,
+		startTime,
 	}: {
 		rootNode: RootNode;
+		startTime?: number;
 	}): Promise<ArrayBuffer | null> {
+		// allow overriding startTime per-call; fall back to constructor value
+		const effectiveStartTime = startTime ?? this.startTime;
+		const exportDuration = this.duration > 0
+			? this.duration
+			: Math.max(0, rootNode.duration - effectiveStartTime);
 		if (isVideoEncoderSupported()) {
 			try {
-				return await this.exportWithMediabunny({ rootNode });
+				return await this.exportWithMediabunny({
+					rootNode,
+					startTime: effectiveStartTime,
+					duration: exportDuration,
+				});
 			} catch (error) {
 				const msg = error instanceof Error ? error.message : "";
 				// If VideoEncoder itself is missing at runtime, fall through
@@ -124,7 +143,11 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 		// Fallback: render frames to a real canvas, capture via MediaRecorder
 		if (isMediaRecorderSupported()) {
-			return this.exportWithMediaRecorder({ rootNode });
+			return this.exportWithMediaRecorder({
+			rootNode,
+			startTime: effectiveStartTime,
+			duration: exportDuration,
+		});
 		}
 
 		throw new Error(
@@ -135,11 +158,15 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 	private async exportWithMediabunny({
 		rootNode,
+		startTime = 0,
+		duration,
 	}: {
 		rootNode: RootNode;
+		startTime?: number;
+		duration: number;
 	}): Promise<ArrayBuffer | null> {
 		const { fps } = this.renderer;
-		const frameCount = Math.ceil(rootNode.duration * fps);
+		const frameCount = Math.ceil(duration * fps);
 
 		// Probe for codec support — fall back to vp9/webm when avc is absent
 		const desiredCodec = this.format === "webm" ? "vp9" : "avc";
@@ -197,7 +224,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				return null;
 			}
 
-			const time = i / fps;
+			const time = startTime + i / fps;
 			await this.renderer.render({ node: rootNode, time });
 			await videoSource.add(time, 1 / fps);
 
@@ -226,11 +253,15 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 	private async exportWithMediaRecorder({
 		rootNode,
+		startTime = 0,
+		duration,
 	}: {
 		rootNode: RootNode;
+		startTime?: number;
+		duration: number;
 	}): Promise<ArrayBuffer | null> {
 		const { fps } = this.renderer;
-		const frameCount = Math.ceil(rootNode.duration * fps);
+		const frameCount = Math.ceil(duration * fps);
 
 		// Ensure renderer uses a visible HTMLCanvasElement for MediaRecorder
 		const exportCanvas = document.createElement("canvas");
@@ -277,7 +308,7 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				return null;
 			}
 
-			const time = i / fps;
+			const time = startTime + i / fps;
 			await this.renderer.renderToCanvas({
 				node: rootNode,
 				time,

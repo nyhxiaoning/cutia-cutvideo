@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/utils/ui";
+import { Input } from "@/components/ui/input";
 import { getExportMimeType, getExportFileExtension } from "@/lib/export";
 import { Check, Copy, Download, RotateCcw } from "lucide-react";
 import {
@@ -27,6 +28,12 @@ import { PropertyGroup } from "@/components/editor/panels/properties/property-it
 import { useEditor } from "@/hooks/use-editor";
 import { DEFAULT_EXPORT_OPTIONS } from "@/constants/export-constants";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
+
+function formatTime(seconds: number): string {
+	const m = Math.floor(seconds / 60);
+	const s = Math.floor(seconds % 60);
+	return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export function ExportButton() {
 	const { t } = useTranslation();
@@ -74,6 +81,7 @@ function ExportPopover({
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const activeProject = editor.project.getActive();
+	const totalDuration = editor.timeline.getTotalDuration();
 	const [format, setFormat] = useState<ExportFormat>(
 		DEFAULT_EXPORT_OPTIONS.format,
 	);
@@ -83,6 +91,8 @@ function ExportPopover({
 	const [includeAudio, setIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio || true,
 	);
+	const [startTime, setStartTime] = useState(0);
+	const [endTime, setEndTime] = useState(totalDuration);
 	const [isExporting, setIsExporting] = useState(false);
 	const [progress, setProgress] = useState(0);
 	const [exportResult, setExportResult] = useState<ExportResult | null>(null);
@@ -102,6 +112,8 @@ function ExportPopover({
 				quality,
 				fps: activeProject.settings.fps,
 				includeAudio,
+				startTime,
+				endTime,
 				onProgress: ({ progress }) => setProgress(progress),
 				onCancel: () => cancelRequestedRef.current,
 			},
@@ -218,6 +230,60 @@ function ExportPopover({
 												</Label>
 											</div>
 										</RadioGroup>
+									</PropertyGroup>
+
+									<PropertyGroup
+										title={t("Time range")}
+										defaultExpanded={false}
+									>
+										<div className="flex items-center gap-2">
+											<div className="flex flex-1 flex-col gap-1">
+												<Label className="text-xs">{t("Start")}</Label>
+												<Input
+													type="number"
+													min={0}
+													max={totalDuration}
+													step={0.1}
+													value={startTime}
+													onChange={(e) => {
+														const v = Number.parseFloat(e.target.value);
+														setStartTime(isNaN(v) ? 0 : Math.max(0, v));
+													}}
+												/>
+												<span className="text-muted-foreground text-[10px]">
+													{formatTime(startTime)}
+												</span>
+											</div>
+											<span className="text-muted-foreground mt-5 text-xs">
+												—
+											</span>
+											<div className="flex flex-1 flex-col gap-1">
+												<Label className="text-xs">{t("End")}</Label>
+												<Input
+													type="number"
+													min={0}
+													max={totalDuration}
+													step={0.1}
+													value={endTime}
+													onChange={(e) => {
+														const v = Number.parseFloat(e.target.value);
+														setEndTime(
+															isNaN(v)
+																? totalDuration
+																: Math.min(totalDuration, v),
+														);
+													}}
+												/>
+												<span className="text-muted-foreground text-[10px]">
+													{formatTime(endTime)}
+												</span>
+											</div>
+										</div>
+										<div className="mt-1 text-center">
+											<span className="text-muted-foreground text-[10px]">
+												{t("Duration")}: {formatTime(endTime - startTime)}
+											</span>
+										</div>
 									</PropertyGroup>
 
 									<PropertyGroup title={t("Audio")} defaultExpanded={false}>

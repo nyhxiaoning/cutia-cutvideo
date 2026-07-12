@@ -3,7 +3,7 @@ import type { RootNode } from "@/services/renderer/nodes/root-node";
 import type { ExportOptions, ExportResult } from "@/types/export";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
-import { createTimelineAudioBuffer } from "@/lib/media/audio";
+import { createTimelineAudioBuffer, sliceAudioBuffer } from "@/lib/media/audio";
 
 export class RendererManager {
 	private renderTree: RootNode | null = null;
@@ -37,10 +37,17 @@ export class RendererManager {
 				return { success: false, error: "No active project" };
 			}
 
-			const duration = this.editor.timeline.getTotalDuration();
-			if (duration === 0) {
+			const totalDuration = this.editor.timeline.getTotalDuration();
+			if (totalDuration === 0) {
 				return { success: false, error: "Project is empty" };
 			}
+
+			const exportStartTime = Math.max(0, options.startTime ?? 0);
+			const exportEndTime =
+				options.endTime && options.endTime > exportStartTime
+					? Math.min(options.endTime, totalDuration)
+					: totalDuration;
+			const exportDuration = exportEndTime - exportStartTime;
 
 			const exportFps = fps || activeProject.settings.fps;
 			const canvasSize = activeProject.settings.canvasSize;
@@ -48,17 +55,24 @@ export class RendererManager {
 			let audioBuffer: AudioBuffer | null = null;
 			if (includeAudio) {
 				onProgress?.({ progress: 0.05 });
-				audioBuffer = await createTimelineAudioBuffer({
+				const fullAudio = await createTimelineAudioBuffer({
 					tracks,
 					mediaAssets,
-					duration,
+					duration: totalDuration,
 				});
+				if (fullAudio) {
+					audioBuffer = await sliceAudioBuffer(
+						fullAudio,
+						exportStartTime,
+						exportDuration,
+					);
+				}
 			}
 
 			const scene = buildScene({
 				tracks,
 				mediaAssets,
-				duration,
+				duration: totalDuration,
 				canvasSize,
 				background: activeProject.settings.background,
 				adjustments: activeProject.settings.adjustments,
@@ -70,6 +84,8 @@ export class RendererManager {
 				fps: exportFps,
 				format,
 				quality,
+				startTime: exportStartTime,
+				duration: exportDuration,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
 			});
