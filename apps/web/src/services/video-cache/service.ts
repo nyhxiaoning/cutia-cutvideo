@@ -6,23 +6,24 @@ import {
 	type WrappedCanvas,
 } from "mediabunny";
 
+const BUFFER_AHEAD_FRAMES = 8;
+
 interface VideoSinkData {
 	sink: CanvasSink;
-	/** Sequential frame iterator (from canvases()), null when seeking */
+	/** Sequential frame iterator, valid during forward playback */
 	iterator: AsyncGenerator<WrappedCanvas, void, unknown> | null;
-	currentFrame: WrappedCanvas | null;
-	/** Tracks the last frame fetched to know if we're iterating or jumping */
-	frameIndex: number;
+	/** Frame buffer for smooth playback — pre-decoded ahead frames */
+	buffer: WrappedCanvas[];
+	/** Timestamp of the last seek (used to detect forward vs backward access) */
+	lastTimestamp: number;
 }
 
 export class VideoCache {
 	private sinks = new Map<string, VideoSinkData>();
 	private initPromises = new Map<string, Promise<void>>();
+	/** Per-sink promise chain so fill requests never pile up uncoordinated */
+	private fillChains = new Map<string, Promise<void>>();
 
-	/**
-	 * Get a frame at an arbitrary time. Fast when called in monotonic order,
-	 * falls back to seek (slower) on random access.
-	 */
 	async getFrameAt({
 		mediaId,
 		file,
@@ -39,92 +40,144 @@ export class VideoCache {
 			return null;
 		}
 
-		return this.getFrameFromSink({ sinkData, time });
+		return this.getFrameFromSink({ sinkData, mediaId, time });
 	}
 
 	private async getFrameFromSink({
 		sinkData,
+		mediaId,
 		time,
 	}: {
 		sinkData: VideoSinkData;
+		mediaId: string;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
-		// Fast path: current frame is still valid (within 0.5s of its timestamp)
-		if (
-			sinkData.currentFrame &&
-			time >= sinkData.currentFrame.timestamp &&
-			time - sinkData.currentFrame.timestamp < 0.5
-		) {
-			return sinkData.currentFrame;
+		// Forward playback: consume from buffer
+		if (sinkData.buffer.length > 0) {
+			const first = sinkData.buffer[0];
+			if (time >= first.timestamp - 0.01) {
+				sinkData.lastTimestamp = first.timestamp;
+				sinkData.buffer.shift();
+				// Queue a background refill (guaranteed to run, never skipped)
+				void this.queueFill({ sinkData, mediaId });
+				return first;
+			}
+
+			// Backward jump: clear buffer, use fresh iterator
+			return this.seekAndIterate({ sinkData, mediaId, time });
 		}
 
-		// Try iterating — works when time is >= currentFrame + some progress
-		if (sinkData.currentFrame && time > sinkData.currentFrame.timestamp) {
-			const frame = await this.iterateToTime({ sinkData, targetTime: time });
-			if (frame) return frame;
+		// Buffer empty: check if we're going forward
+		if (time > sinkData.lastTimestamp) {
+			return this.seekAndIterate({ sinkData, mediaId, time });
 		}
 
-		// Seek: create a fresh iterator starting at the requested time
-		return this.seekToTime({ sinkData, time });
+		return this.seekToTime({ sinkData, mediaId, time });
 	}
 
-	private async iterateToTime({
+	/**
+	 * Seek to time, then start filling the buffer for subsequent calls.
+	 */
+	private async seekAndIterate({
 		sinkData,
-		targetTime,
+		mediaId,
+		time,
 	}: {
 		sinkData: VideoSinkData;
-		targetTime: number;
+		mediaId: string;
+		time: number;
 	}): Promise<WrappedCanvas | null> {
+		sinkData.buffer = [];
+		if (sinkData.iterator) {
+			try { await sinkData.iterator.return(); } catch { /* ignore */ }
+			sinkData.iterator = null;
+		}
+
+		const frame = await this.seekToTime({ sinkData, mediaId, time });
+		// fillBuffer already started in seekToTime; wait for enough buffer
+		if (frame) {
+			await this.waitForBuffer({ sinkData, mediaId });
+		}
+		return frame;
+	}
+
+	private async waitForBuffer({
+		sinkData,
+		mediaId,
+	}: {
+		sinkData: VideoSinkData;
+		mediaId: string;
+	}): Promise<void> {
+		const chain = this.fillChains.get(mediaId);
+		if (chain) {
+			await chain;
+		}
+		// If still not enough buffer, fill more
+		if (sinkData.buffer.length < BUFFER_AHEAD_FRAMES / 2) {
+			await this.doFill({ sinkData });
+		}
+	}
+
+	/**
+	 * Queue a single fill — always runs, never skipped.
+	 * Multiple rapid calls chain behind each other, each adding one frame.
+	 */
+	private queueFill({
+		sinkData,
+		mediaId,
+	}: {
+		sinkData: VideoSinkData;
+		mediaId: string;
+	}): void {
+		const prev = this.fillChains.get(mediaId) ?? Promise.resolve();
+		const next = prev
+			.then(() => this.doFill({ sinkData }))
+			.catch(() => { /* ignore fill errors */ });
+		this.fillChains.set(mediaId, next);
+	}
+
+	private async doFill({
+		sinkData,
+	}: {
+		sinkData: VideoSinkData;
+	}): Promise<void> {
 		if (!sinkData.iterator) {
-			// Clamp start to avoid creating an iterator at a time ahead of targetTime
-			const start = Math.min(
-				sinkData.currentFrame?.timestamp ?? Math.max(0, targetTime - 1),
-				targetTime,
-			);
+			const start =
+				sinkData.buffer.length > 0
+					? sinkData.buffer[sinkData.buffer.length - 1].timestamp
+					: sinkData.lastTimestamp;
 			sinkData.iterator = sinkData.sink.canvases(start);
-			sinkData.frameIndex = 0;
 		}
 
-		// Advance the iterator until we reach/pass targetTime
-		for (let attempts = 0; attempts < 120; attempts++) {
-			try {
-				const result = await sinkData.iterator.next();
-				if (result.done || !result.value) {
-					sinkData.iterator = null;
-					return null;
-				}
-
-				sinkData.currentFrame = result.value;
-				sinkData.frameIndex++;
-
-				if (result.value.timestamp >= targetTime - 0.001) {
-					return result.value;
-				}
-				// Otherwise keep advancing — frame was before our target
-			} catch {
+		try {
+			const result = await sinkData.iterator.next();
+			if (result.done || !result.value) {
 				sinkData.iterator = null;
-				return null;
+				return;
 			}
+			sinkData.buffer.push(result.value);
+		} catch {
+			sinkData.iterator = null;
 		}
-
-		// Safety valve: too many iterations, fall back to seek
-		sinkData.iterator = null;
-		return this.seekToTime({ sinkData, time: targetTime });
 	}
 
 	private async seekToTime({
 		sinkData,
+		mediaId,
 		time,
 	}: {
 		sinkData: VideoSinkData;
+		mediaId: string;
 		time: number;
 	}): Promise<WrappedCanvas | null> {
 		try {
 			const frame = await sinkData.sink.getCanvas(time);
 			if (frame) {
-				sinkData.currentFrame = frame;
+				sinkData.buffer = [];
 				sinkData.iterator = null;
-				sinkData.frameIndex = 0;
+				sinkData.lastTimestamp = frame.timestamp;
+				// Fill initial batch in background
+				void this.queueFill({ sinkData, mediaId });
 			}
 			return frame;
 		} catch {
@@ -181,8 +234,8 @@ export class VideoCache {
 			this.sinks.set(mediaId, {
 				sink,
 				iterator: null,
-				currentFrame: null,
-				frameIndex: 0,
+				buffer: [],
+				lastTimestamp: -1,
 			});
 		} catch (error) {
 			console.error(`Failed to initialize video sink for ${mediaId}:`, error);
@@ -198,18 +251,13 @@ export class VideoCache {
 			this.sinks.delete(mediaId);
 		}
 		this.initPromises.delete(mediaId);
+		this.fillChains.delete(mediaId);
 	}
 
 	clearAll(): void {
 		for (const mediaId of Array.from(this.sinks.keys())) {
 			this.clearVideo({ mediaId });
 		}
-	}
-
-	getStats() {
-		return {
-			totalSinks: this.sinks.size,
-		};
 	}
 }
 
