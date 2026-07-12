@@ -57,7 +57,16 @@ import { DeleteProjectDialog } from "@/components/editor/dialogs/delete-project-
 import { ProjectInfoDialog } from "@/components/editor/dialogs/project-info-dialog";
 import { RenameProjectDialog } from "@/components/editor/dialogs/rename-project-dialog";
 import { cn } from "@/utils/ui";
+import { Github, Download, Upload } from "lucide-react";
 import { StorageIndicator } from "./storage-indicator";
+import { GitHubSyncDialog } from "./github-sync-dialog";
+import {
+	githubConfigStorage,
+	fetchFileContent,
+	pushFileContent,
+	GitHubApiError,
+} from "@/services/github-sync";
+import { storageService } from "@/services/storage/service";
 
 const formatProjectDuration = ({
 	duration,
@@ -80,6 +89,8 @@ const VIEW_MODE_OPTIONS = [
 export default function ProjectsPage() {
 	const { searchQuery, sortKey, sortOrder, viewMode } = useProjectsStore();
 	const editor = useEditor();
+	const [isGitHubSyncDialogOpen, setIsGitHubSyncDialogOpen] = useState(false);
+	const [isSyncing, setIsSyncing] = useState({ pull: false, push: false });
 
 	useEffect(() => {
 		if (!editor.project.getIsInitialized()) {
@@ -96,10 +107,88 @@ export default function ProjectsPage() {
 	const isLoading = editor.project.getIsLoading();
 	const isInitialized = editor.project.getIsInitialized();
 
+	const handlePullFromGitHub = async () => {
+		setIsSyncing((prev) => ({ ...prev, pull: true }));
+		try {
+			const config = await githubConfigStorage.get();
+			if (!config) {
+				toast.error(t("Please configure GitHub sync first"));
+				return;
+			}
+			const content = await fetchFileContent({ config });
+			if (!content) {
+				toast.info(t("No data found on GitHub"));
+				return;
+			}
+			const data = JSON.parse(content);
+			if (data.projects && Array.isArray(data.projects)) {
+				let count = 0;
+				for (const projectData of data.projects) {
+					try {
+						await storageService.saveProject({ project: projectData });
+						count++;
+					} catch {
+						// Skip individual project import errors
+					}
+				}
+				toast.success(t("{{count}} projects pulled from GitHub", { count }));
+				editor.project.loadAllProjects();
+			}
+		} catch (error) {
+			if (error instanceof GitHubApiError) {
+				toast.error(error.message);
+			} else {
+				toast.error(t("Failed to pull from GitHub"));
+			}
+		} finally {
+			setIsSyncing((prev) => ({ ...prev, pull: false }));
+		}
+	};
+
+	const handlePushToGitHub = async () => {
+		setIsSyncing((prev) => ({ ...prev, push: true }));
+		try {
+			const config = await githubConfigStorage.get();
+			if (!config) {
+				toast.error(t("Please configure GitHub sync first"));
+				return;
+			}
+			const projects = await storageService.loadAllProjects();
+			const content = JSON.stringify({ projects, exportedAt: new Date().toISOString() }, null, 2);
+			await pushFileContent({
+				config,
+				content,
+				commitMessage: "Sync projects from Cutia",
+			});
+			await githubConfigStorage.set({
+				...config,
+				lastSyncedAt: new Date().toISOString(),
+			});
+			toast.success(t("{{count}} projects pushed to GitHub", { count: projects.length }));
+		} catch (error) {
+			if (error instanceof GitHubApiError) {
+				toast.error(error.message);
+			} else {
+				toast.error(t("Failed to push to GitHub"));
+			}
+		} finally {
+			setIsSyncing((prev) => ({ ...prev, push: false }));
+		}
+	};
+
 	return (
 		<div className="bg-background min-h-screen">
 			<MigrationDialog />
-			<ProjectsHeader />
+			<GitHubSyncDialog
+				isOpen={isGitHubSyncDialogOpen}
+				onOpenChange={setIsGitHubSyncDialogOpen}
+			/>
+			<ProjectsHeader
+				onOpenSyncDialog={() => setIsGitHubSyncDialogOpen(true)}
+				isSyncing={isSyncing}
+				onPull={handlePullFromGitHub}
+				onPush={handlePushToGitHub}
+			/>
 			<ProjectsToolbar projectIds={projectsToDisplay.map((p) => p.id)} />
 			<main className="mx-auto px-4 pt-2 pb-6 flex flex-col gap-4">
 				{isLoading || !isInitialized ? (
@@ -128,7 +217,17 @@ export default function ProjectsPage() {
 	);
 }
 
-function ProjectsHeader() {
+function ProjectsHeader({
+	onOpenSyncDialog,
+	isSyncing,
+	onPull,
+	onPush,
+}: {
+	onOpenSyncDialog: () => void;
+	isSyncing: { pull: boolean; push: boolean };
+	onPull: () => Promise<void>;
+	onPush: () => Promise<void>;
+}) {
 	const { t } = useTranslation();
 	const { viewMode, isHydrated, setViewMode } = useProjectsStore();
 
@@ -177,6 +276,51 @@ function ProjectsHeader() {
 				<div className="flex items-center gap-3 md:gap-4">
 					<StorageIndicator />
 					<SearchBar className="hidden md:block" />
+
+					{/* GitHub sync buttons */}
+					<Button
+						variant="outline"
+						type="button"
+						size="icon"
+						onClick={onOpenSyncDialog}
+						aria-label={t("GitHub sync config")}
+						title={t("Configure GitHub sync")}
+					>
+						<Github className="size-4" />
+					</Button>
+					<Button
+						variant="outline"
+						type="button"
+						className="gap-1.5"
+						onClick={onPull}
+						disabled={isSyncing.pull}
+						aria-label={t("Pull from GitHub")}
+						title={t("Pull projects from GitHub")}
+					>
+						{isSyncing.pull ? (
+							<div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+						) : (
+							<Download className="size-4" />
+						)}
+						<span className="hidden sm:inline">{t("Pull")}</span>
+					</Button>
+					<Button
+						variant="outline"
+						type="button"
+						className="gap-1.5"
+						onClick={onPush}
+						disabled={isSyncing.push}
+						aria-label={t("Push to GitHub")}
+						title={t("Push projects to GitHub")}
+					>
+						{isSyncing.push ? (
+							<div className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+						) : (
+							<Upload className="size-4" />
+						)}
+						<span className="hidden sm:inline">{t("Push")}</span>
+					</Button>
+
 					<Link href="/characters">
 						<Button variant="outline" type="button" className="gap-1.5">
 							<HugeiconsIcon icon={UserIcon} className="size-4" />

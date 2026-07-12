@@ -32,6 +32,7 @@ import { cn } from "@/utils/ui";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 import { useAgentStore } from "@/stores/agent-store";
 import { OpenInEditor } from "@/components/dev/open-in-editor";
+import { useDevSettingsStore } from "@/stores/dev-settings-store";
 
 export function EditorHeader() {
 	const { t } = useTranslation();
@@ -43,6 +44,7 @@ export function EditorHeader() {
 				<EditableProjectName />
 			</div>
 			<nav className="flex items-center gap-2">
+				<OpenInEditorToggle />
 				<FeedbackTrigger>
 					<Button
 						type="button"
@@ -273,6 +275,36 @@ function AgentToggle() {
 			className="size-8"
 		>
 			<HugeiconsIcon icon={SparklesIcon} className="size-4" />
+		</Button>
+	);
+}
+
+function OpenInEditorToggle() {
+	const showOpenInEditor = useDevSettingsStore((s) => s.showOpenInEditor);
+	const toggleOpenInEditor = useDevSettingsStore((s) => s.toggleOpenInEditor);
+
+	return (
+		<Button
+			variant={showOpenInEditor ? "secondary" : "ghost"}
+			size="icon"
+			onClick={toggleOpenInEditor}
+			title={showOpenInEditor ? "Hide file labels" : "Show file labels"}
+			className="size-8"
+		>
+			<svg
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				aria-hidden="true"
+			>
+				<polyline points="16 18 22 12 16 6" />
+				<polyline points="8 6 2 12 8 18" />
+			</svg>
 		</Button>
 	);
 }

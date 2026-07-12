@@ -1,5 +1,7 @@
 "use client";
 
+import { useDevSettingsStore } from "@/stores/dev-settings-store";
+
 interface OpenInEditorProps {
 	source: string;
 	line?: number;
@@ -8,6 +10,10 @@ interface OpenInEditorProps {
 const PROJECT_ROOT = "/Users/henryheng/Code/personCode/cutia-cutvideo";
 
 export function OpenInEditor({ source, line }: OpenInEditorProps) {
+	const showOpenInEditor = useDevSettingsStore((s) => s.showOpenInEditor);
+
+	if (!showOpenInEditor) return null;
+
 	const filePath = `${PROJECT_ROOT}/apps/web/${source}`;
 	const url = `vscode://file${filePath}${line ? `:${line}` : ""}`;
 

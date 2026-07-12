@@ -206,6 +206,23 @@ export function MediaView() {
 			element,
 			placement: { mode: "auto" },
 		});
+		// Auto-select so Properties panel shows immediately
+		const tracks = editor.timeline.getTracks();
+		for (const track of tracks) {
+			const added = track.elements.find(
+				(el) =>
+					el.startTime === element.startTime &&
+					Math.abs(el.duration - element.duration) < 0.01 &&
+					"mediaId" in el &&
+					el.mediaId === asset.id,
+			);
+			if (added) {
+				editor.selection.setSelectedElements({
+					elements: [{ trackId: track.id, elementId: added.id }],
+				});
+				break;
+			}
+		}
 		return true;
 	};
 

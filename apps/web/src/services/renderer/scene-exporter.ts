@@ -36,12 +36,36 @@ const qualityMap = {
 	very_high: QUALITY_VERY_HIGH,
 };
 
+const BITRATE_MAP: Record<ExportQuality, number> = {
+	low: 500_000,
+	medium: 1_000_000,
+	high: 3_000_000,
+	very_high: 8_000_000,
+};
+
+function getMediaRecorderMimeType(): string | null {
+	const preferred = ['video/webm;codecs="vp8"', "video/webm", "video/mp4"];
+	for (const mime of preferred) {
+		if (MediaRecorder.isTypeSupported(mime)) return mime;
+	}
+	return null;
+}
+
 export type SceneExporterEvents = {
 	progress: [progress: number];
 	complete: [buffer: ArrayBuffer];
 	error: [error: Error];
 	cancelled: [];
 };
+
+function isVideoEncoderSupported(): boolean {
+	return typeof VideoEncoder !== "undefined";
+}
+
+function isMediaRecorderSupported(): boolean {
+	return typeof MediaRecorder !== "undefined"
+		&& MediaRecorder.isTypeSupported('video/webm;codecs="vp8"');
+}
 
 export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	private renderer: CanvasRenderer;
@@ -80,6 +104,36 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	}
 
 	async export({
+		rootNode,
+	}: {
+		rootNode: RootNode;
+	}): Promise<ArrayBuffer | null> {
+		if (isVideoEncoderSupported()) {
+			try {
+				return await this.exportWithMediabunny({ rootNode });
+			} catch (error) {
+				const msg = error instanceof Error ? error.message : "";
+				// If VideoEncoder itself is missing at runtime, fall through
+				if (msg.includes("VideoEncoder is not supported")) {
+					// Fall through to MediaRecorder
+				} else {
+					throw error;
+				}
+			}
+		}
+
+		// Fallback: render frames to a real canvas, capture via MediaRecorder
+		if (isMediaRecorderSupported()) {
+			return this.exportWithMediaRecorder({ rootNode });
+		}
+
+		throw new Error(
+			"VideoEncoder is not supported by this browser. " +
+			"Please try a different browser (Chrome/Edge recommended).",
+		);
+	}
+
+	private async exportWithMediabunny({
 		rootNode,
 	}: {
 		rootNode: RootNode;
@@ -166,6 +220,87 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			return null;
 		}
 
+		this.emit("complete", buffer);
+		return buffer;
+	}
+
+	private async exportWithMediaRecorder({
+		rootNode,
+	}: {
+		rootNode: RootNode;
+	}): Promise<ArrayBuffer | null> {
+		const { fps } = this.renderer;
+		const frameCount = Math.ceil(rootNode.duration * fps);
+
+		// Ensure renderer uses a visible HTMLCanvasElement for MediaRecorder
+		const exportCanvas = document.createElement("canvas");
+		exportCanvas.width = this.renderer.width;
+		exportCanvas.height = this.renderer.height;
+
+		const mimeType = getMediaRecorderMimeType();
+		if (!mimeType) {
+			throw new Error(
+				"Video export is not supported by this browser. " +
+				"Please try a different browser (Chrome/Edge recommended).",
+			);
+		}
+
+		const stream = exportCanvas.captureStream(fps);
+		const recorder = new MediaRecorder(stream, {
+			mimeType,
+			videoBitsPerSecond: BITRATE_MAP[this.quality],
+		});
+
+		const chunks: Blob[] = [];
+		recorder.ondataavailable = (event) => {
+			if (event.data.size > 0) {
+				chunks.push(event.data);
+			}
+		};
+
+		const recordPromise = new Promise<Blob>((resolve, reject) => {
+			recorder.onstop = () => {
+				resolve(new Blob(chunks, { type: mimeType }));
+			};
+			recorder.onerror = () => {
+				reject(new Error("MediaRecorder recording failed"));
+			};
+		});
+
+		recorder.start();
+
+		// Render each frame to the visible canvas for capture
+		for (let i = 0; i < frameCount; i++) {
+			if (this.isCancelled) {
+				recorder.stop();
+				this.emit("cancelled");
+				return null;
+			}
+
+			const time = i / fps;
+			await this.renderer.renderToCanvas({
+				node: rootNode,
+				time,
+				targetCanvas: exportCanvas,
+			});
+
+			this.emit("progress", i / frameCount);
+
+			// Yield to allow the MediaRecorder to capture the frame
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+
+		if (this.isCancelled) {
+			recorder.stop();
+			this.emit("cancelled");
+			return null;
+		}
+
+		recorder.stop();
+		const blob = await recordPromise;
+		const buffer = await blob.arrayBuffer();
+
+		this.emit("progress", 1);
 		this.emit("complete", buffer);
 		return buffer;
 	}

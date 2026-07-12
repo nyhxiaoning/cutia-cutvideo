@@ -13,8 +13,7 @@ import {
 } from "./property-item";
 import { clamp } from "@/utils/math";
 import { useEditor } from "@/hooks/use-editor";
-import type { ImageElement, VideoElement } from "@/types/timeline";
-import type { ElementKeyframes, KeyframeDef, CropRect, MaskShape } from "@/types/timeline";
+import type { ImageElement, VideoElement, ElementKeyframes, KeyframeDef, CropRect, MaskShape } from "@/types/timeline";
 import { SPEED_PRESETS, formatSpeedLabel } from "@/lib/timeline/speed-utils";
 import { CropMaskControls } from "./crop-mask-controls";
 
@@ -730,7 +729,7 @@ export function VideoProperties({
 											type="number"
 											value={speedDisplay}
 											min={0.25}
-											max={4}
+											max={50}
 											step={0.05}
 											onFocus={() => {
 												isEditingSpeed.current = true;
@@ -745,7 +744,7 @@ export function VideoProperties({
 												}
 												const parsed = Number.parseFloat(event.target.value);
 												if (!Number.isNaN(parsed)) {
-													const clamped = clamp({ value: parsed, min: 0.25, max: 4 });
+													const clamped = clamp({ value: parsed, min: 0.25, max: 50 });
 													applySpeedChange({
 														newRate: clamped,
 														pushHistory: false,
@@ -757,7 +756,7 @@ export function VideoProperties({
 													const parsed = Number.parseFloat(speedDraft.current);
 													const clamped = Number.isNaN(parsed)
 														? currentSpeed
-														: clamp({ value: parsed, min: 0.25, max: 4 });
+														: clamp({ value: parsed, min: 0.25, max: 50 });
 													applySpeedChange({
 														newRate: initialSpeedRef.current,
 														pushHistory: false,
