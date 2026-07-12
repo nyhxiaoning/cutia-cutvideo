@@ -224,9 +224,9 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				return null;
 			}
 
-			const time = startTime + i / fps;
-			await this.renderer.render({ node: rootNode, time });
-			await videoSource.add(time, 1 / fps);
+			const sceneTime = startTime + i / fps;
+			await this.renderer.render({ node: rootNode, time: sceneTime });
+			await videoSource.add(i / fps, 1 / fps);
 
 			this.emit("progress", i / frameCount);
 		}
@@ -308,10 +308,10 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 				return null;
 			}
 
-			const time = startTime + i / fps;
+			const sceneTime = startTime + i / fps;
 			await this.renderer.renderToCanvas({
 				node: rootNode,
-				time,
+				time: sceneTime,
 				targetCanvas: exportCanvas,
 			});
 
