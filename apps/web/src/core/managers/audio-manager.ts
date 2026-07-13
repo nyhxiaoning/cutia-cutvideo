@@ -102,7 +102,7 @@ export class AudioManager {
 			void this.startPlayback({
 				time: this.editor.playback.getCurrentTime(),
 			});
-		}, 300);
+		}, 50);
 	};
 
 	private ensureAudioContext(): AudioContext | null {
