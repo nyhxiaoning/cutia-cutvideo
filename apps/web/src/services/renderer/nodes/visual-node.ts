@@ -12,6 +12,7 @@ import {
 } from "@/utils/keyframe";
 
 const VISUAL_EPSILON = 1 / 1000;
+const BOOKEND = 2; // seconds of head/tail kept at normal speed when rate > 1
 
 export interface VisualNodeParams {
 	duration: number;
@@ -30,24 +31,57 @@ export interface VisualNodeParams {
 	maskRadius?: number;
 }
 
+const TIMELAPSE_HEAD_TAIL = 0.15;
+
 export abstract class VisualNode<
 	Params extends VisualNodeParams = VisualNodeParams,
 > extends BaseNode<Params> {
 	protected getLocalTime(time: number): number {
 		const rate = this.params.playbackRate ?? 1;
 		const elapsed = time - this.params.timeOffset;
+
 		if (this.params.reversed) {
 			return this.params.trimStart + rate * (this.params.duration - elapsed);
 		}
-		return this.params.trimStart + elapsed * rate;
+
+		if (rate <= 1) {
+			return this.params.trimStart + elapsed * rate;
+		}
+
+		// The UI scaled element.duration by rate (applySpeedChange).
+		// The original (unscaled) source length = scaled duration * rate.
+		const srcDur = this.params.trimEnd > this.params.trimStart
+			? this.params.trimEnd - this.params.trimStart
+			: this.params.duration * rate;
+		const outputDur = this.params.duration;
+
+		// Head: first BOOKEND seconds of output → source[0..BOOKEND] normal speed
+		const headOut = Math.min(BOOKEND, outputDur);
+		if (elapsed < headOut) {
+			return this.params.trimStart + (elapsed / headOut) * BOOKEND;
+		}
+
+		// Tail: last BOOKEND seconds of output → source[srcDur-BOOKEND..srcDur] normal speed
+		const tailOut = Math.min(BOOKEND, outputDur - headOut);
+		const tailStart = outputDur - tailOut;
+		if (elapsed >= tailStart) {
+			const p = tailOut > 0 ? (elapsed - tailStart) / tailOut : 1;
+			return this.params.trimStart + (srcDur - BOOKEND) + p * BOOKEND;
+		}
+
+		// Middle: accelerate — source[BOOKEND .. srcDur-BOOKEND] compressed
+		// into output[headOut .. tailStart]
+		const midOutput = outputDur - headOut - tailOut;
+		if (midOutput <= 0) return this.params.trimStart + elapsed * rate;
+		const p = (elapsed - headOut) / midOutput;
+		return this.params.trimStart + BOOKEND + p * (srcDur - 2 * BOOKEND);
 	}
 
 	protected isInRange(time: number): boolean {
-		const localTime = this.getLocalTime(time);
-		const rate = this.params.playbackRate ?? 1;
+		const elapsed = time - this.params.timeOffset;
 		return (
-			localTime >= this.params.trimStart - VISUAL_EPSILON &&
-			localTime < this.params.trimStart + this.params.duration * rate
+			elapsed >= -VISUAL_EPSILON &&
+			elapsed < this.params.duration + VISUAL_EPSILON
 		);
 	}
 
