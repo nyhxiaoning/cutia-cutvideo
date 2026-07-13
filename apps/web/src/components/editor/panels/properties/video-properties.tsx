@@ -730,7 +730,7 @@ export function VideoProperties({
 											type="number"
 											value={speedDisplay}
 											min={0.25}
-											max={4}
+											max={64}
 											step={0.05}
 											onFocus={() => {
 												isEditingSpeed.current = true;
