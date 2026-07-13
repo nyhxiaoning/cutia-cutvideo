@@ -745,7 +745,7 @@ export function VideoProperties({
 												}
 												const parsed = Number.parseFloat(event.target.value);
 												if (!Number.isNaN(parsed)) {
-													const clamped = clamp({ value: parsed, min: 0.25, max: 4 });
+													const clamped = clamp({ value: parsed, min: 0.25, max: 64 });
 													applySpeedChange({
 														newRate: clamped,
 														pushHistory: false,
@@ -757,7 +757,7 @@ export function VideoProperties({
 													const parsed = Number.parseFloat(speedDraft.current);
 													const clamped = Number.isNaN(parsed)
 														? currentSpeed
-														: clamp({ value: parsed, min: 0.25, max: 4 });
+														: clamp({ value: parsed, min: 0.25, max: 64 });
 													applySpeedChange({
 														newRate: initialSpeedRef.current,
 														pushHistory: false,
