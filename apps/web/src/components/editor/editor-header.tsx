@@ -24,6 +24,7 @@ import {
 	CommandIcon,
 	SparklesIcon,
 } from "@hugeicons/core-free-icons";
+import { Github, Download, Upload } from "lucide-react";
 import { FeedbackTrigger } from "@/components/feedback/feedback-trigger";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ShortcutsDialog } from "./dialogs/shortcuts-dialog";
@@ -31,10 +32,50 @@ import Image from "next/image";
 import { cn } from "@/utils/ui";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
 import { useAgentStore } from "@/stores/agent-store";
+import { useDevModeStore } from "@/stores/dev-mode-store";
 import { OpenInEditor } from "@/components/dev/open-in-editor";
+import { GitHubSyncDialog } from "@/components/github/github-sync-dialog";
+import { pullFromGitHub, pushToGitHub } from "@/services/github-sync/api";
+import { exportAllProjects, importProjects } from "@/services/github-sync/project-io";
 
 export function EditorHeader() {
 	const { t } = useTranslation();
+	const [githubOpen, setGithubOpen] = useState(false);
+	const [isPulling, setIsPulling] = useState(false);
+	const [isPushing, setIsPushing] = useState(false);
+
+	const handlePull = async () => {
+		setIsPulling(true);
+		try {
+			const content = await pullFromGitHub();
+			const result = await importProjects(content);
+			toast.success(
+				t("Pulled from GitHub") + `: ${result.imported} new, ${result.updated} updated`,
+			);
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("Failed to pull from GitHub"),
+			);
+		} finally {
+			setIsPulling(false);
+		}
+	};
+
+	const handlePush = async () => {
+		setIsPushing(true);
+		try {
+			const content = await exportAllProjects();
+			await pushToGitHub(content);
+			toast.success(t("Projects pushed to GitHub"));
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : t("Failed to push to GitHub"),
+			);
+		} finally {
+			setIsPushing(false);
+		}
+	};
+
 	return (
 		<header className="group relative bg-background flex h-[3.4rem] items-center justify-between px-3 pt-0.5">
 			<OpenInEditor source="src/components/editor/editor-header.tsx" line={35} />
@@ -43,6 +84,39 @@ export function EditorHeader() {
 				<EditableProjectName />
 			</div>
 			<nav className="flex items-center gap-2">
+				<DevModeToggle />
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					onClick={() => setGithubOpen(true)}
+					title={t("GitHub Sync")}
+					className="size-8"
+				>
+					<Github className="size-4" />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					onClick={handlePull}
+					disabled={isPulling}
+					title={t("Pull from GitHub")}
+					className="size-8"
+				>
+					<Download className="size-4" />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					onClick={handlePush}
+					disabled={isPushing}
+					title={t("Push to GitHub")}
+					className="size-8"
+				>
+					<Upload className="size-4" />
+				</Button>
 				<FeedbackTrigger>
 					<Button
 						type="button"
@@ -59,6 +133,10 @@ export function EditorHeader() {
 				<AgentToggle />
 				<ExportButton />
 			</nav>
+			<GitHubSyncDialog
+				isOpen={githubOpen}
+				onOpenChange={setGithubOpen}
+			/>
 		</header>
 	);
 }
@@ -273,6 +351,24 @@ function AgentToggle() {
 			className="size-8"
 		>
 			<HugeiconsIcon icon={SparklesIcon} className="size-4" />
+		</Button>
+	);
+}
+
+function DevModeToggle() {
+	const { t } = useTranslation();
+	const isEnabled = useDevModeStore((s) => s.isEnabled);
+	const toggle = useDevModeStore((s) => s.toggle);
+
+	return (
+		<Button
+			variant={isEnabled ? "secondary" : "ghost"}
+			size="sm"
+			onClick={toggle}
+			title={isEnabled ? "Dev mode: ON" : "Dev mode: OFF"}
+			className="h-8 text-[11px] font-mono tracking-tight"
+		>
+			DEV
 		</Button>
 	);
 }

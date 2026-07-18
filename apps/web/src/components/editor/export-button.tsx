@@ -74,6 +74,7 @@ function ExportPopover({
 	const { t } = useTranslation();
 	const editor = useEditor();
 	const activeProject = editor.project.getActive();
+	const totalDuration = editor.playback.getCurrentTime();
 	const [format, setFormat] = useState<ExportFormat>(
 		DEFAULT_EXPORT_OPTIONS.format,
 	);
@@ -83,6 +84,9 @@ function ExportPopover({
 	const [includeAudio, setIncludeAudio] = useState<boolean>(
 		DEFAULT_EXPORT_OPTIONS.includeAudio || true,
 	);
+	const [exportFull, setExportFull] = useState(true);
+	const [startTime, setStartTime] = useState(0);
+	const [endTime, setEndTime] = useState(totalDuration);
 	const [isExporting, setIsExporting] = useState(false);
 	const [progress, setProgress] = useState(0);
 	const [exportResult, setExportResult] = useState<ExportResult | null>(null);
@@ -102,6 +106,7 @@ function ExportPopover({
 				quality,
 				fps: activeProject.settings.fps,
 				includeAudio,
+				...(exportFull ? {} : { startTime, endTime }),
 				onProgress: ({ progress }) => setProgress(progress),
 				onCancel: () => cancelRequestedRef.current,
 			},

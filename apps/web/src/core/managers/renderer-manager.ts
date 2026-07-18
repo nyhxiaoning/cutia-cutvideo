@@ -3,7 +3,7 @@ import type { RootNode } from "@/services/renderer/nodes/root-node";
 import type { ExportOptions, ExportResult } from "@/types/export";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
-import { createTimelineAudioBuffer } from "@/lib/media/audio";
+import { createTimelineAudioBuffer, sliceAudioBuffer } from "@/lib/media/audio";
 
 export class RendererManager {
 	private renderTree: RootNode | null = null;
@@ -25,7 +25,7 @@ export class RendererManager {
 	}: {
 		options: ExportOptions;
 	}): Promise<ExportResult> {
-		const { format, quality, fps, includeAudio, onProgress, onCancel } =
+		const { format, quality, fps, includeAudio, startTime, endTime, onProgress, onCancel } =
 			options;
 
 		try {
@@ -37,9 +37,19 @@ export class RendererManager {
 				return { success: false, error: "No active project" };
 			}
 
-			const duration = this.editor.timeline.getTotalDuration();
-			if (duration === 0) {
+			const totalDuration = this.editor.timeline.getTotalDuration();
+			if (totalDuration === 0) {
 				return { success: false, error: "Project is empty" };
+			}
+
+			const exportStartTime = Math.max(0, startTime ?? 0);
+			const exportEndTime = endTime && endTime > exportStartTime
+				? Math.min(endTime, totalDuration)
+				: totalDuration;
+			const exportDuration = exportEndTime - exportStartTime;
+
+			if (exportDuration <= 0) {
+				return { success: false, error: "Invalid time range" };
 			}
 
 			const exportFps = fps || activeProject.settings.fps;
@@ -48,17 +58,25 @@ export class RendererManager {
 			let audioBuffer: AudioBuffer | null = null;
 			if (includeAudio) {
 				onProgress?.({ progress: 0.05 });
-				audioBuffer = await createTimelineAudioBuffer({
+				const fullAudio = await createTimelineAudioBuffer({
 					tracks,
 					mediaAssets,
-					duration,
+					duration: totalDuration,
 				});
+				if (fullAudio) {
+					audioBuffer = sliceAudioBuffer(
+						fullAudio.buffer,
+						exportStartTime,
+						exportDuration,
+						fullAudio.context,
+					);
+				}
 			}
 
 			const scene = buildScene({
 				tracks,
 				mediaAssets,
-				duration,
+				duration: totalDuration,
 				canvasSize,
 				background: activeProject.settings.background,
 				adjustments: activeProject.settings.adjustments,
@@ -70,6 +88,8 @@ export class RendererManager {
 				fps: exportFps,
 				format,
 				quality,
+				startTime: exportStartTime,
+				duration: exportDuration,
 				shouldIncludeAudio: !!includeAudio,
 				audioBuffer: audioBuffer || undefined,
 			});

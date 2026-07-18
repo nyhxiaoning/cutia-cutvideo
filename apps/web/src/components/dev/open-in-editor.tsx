@@ -1,13 +1,20 @@
 "use client";
 
+import { useDevModeStore } from "@/stores/dev-mode-store";
+
 interface OpenInEditorProps {
 	source: string;
 	line?: number;
+	hideWhenDevModeOff?: boolean;
 }
 
 const PROJECT_ROOT = "/Users/henryheng/Code/personCode/cutia-cutvideo";
 
-export function OpenInEditor({ source, line }: OpenInEditorProps) {
+export function OpenInEditor({ source, line, hideWhenDevModeOff = true }: OpenInEditorProps) {
+	const isDevMode = useDevModeStore((s) => s.isEnabled);
+
+	if (hideWhenDevModeOff && !isDevMode) return null;
+
 	const filePath = `${PROJECT_ROOT}/apps/web/${source}`;
 	const url = `vscode://file${filePath}${line ? `:${line}` : ""}`;
 

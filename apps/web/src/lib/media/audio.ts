@@ -513,6 +513,33 @@ export async function collectAudioClips({
 	return clips;
 }
 
+export function sliceAudioBuffer(
+	buffer: AudioBuffer,
+	startTime: number,
+	duration: number,
+	audioContext: AudioContext,
+): AudioBuffer {
+	const startSample = Math.floor(startTime * buffer.sampleRate);
+	const lengthSamples = Math.ceil(duration * buffer.sampleRate);
+	const channels = buffer.numberOfChannels;
+	const sliced = audioContext.createBuffer(
+		channels,
+		lengthSamples,
+		buffer.sampleRate,
+	);
+
+	for (let ch = 0; ch < channels; ch++) {
+		const source = buffer.getChannelData(ch);
+		const target = sliced.getChannelData(ch);
+		for (let i = 0; i < lengthSamples; i++) {
+			const srcIdx = startSample + i;
+			target[i] = srcIdx < source.length ? source[srcIdx] : 0;
+		}
+	}
+
+	return sliced;
+}
+
 export async function createTimelineAudioBuffer({
 	tracks,
 	mediaAssets,
@@ -525,7 +552,7 @@ export async function createTimelineAudioBuffer({
 	duration: number;
 	sampleRate?: number;
 	audioContext?: AudioContext;
-}): Promise<AudioBuffer | null> {
+}): Promise<{ buffer: AudioBuffer; context: AudioContext } | null> {
 	const context = audioContext ?? createAudioContext();
 
 	const audioElements = await collectAudioElements({
@@ -555,7 +582,7 @@ export async function createTimelineAudioBuffer({
 		});
 	}
 
-	return outputBuffer;
+	return { buffer: outputBuffer, context };
 }
 
 function mixAudioChannels({
