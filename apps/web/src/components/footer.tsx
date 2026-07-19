@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@/lib/navigation";
-import { FaGithub } from "react-icons/fa6";
+import { Github } from "lucide-react";
 import Image from "next/image";
 import { DEFAULT_LOGO_URL, SOCIAL_LINKS } from "@/constants/site-constants";
 import { useTranslation } from "@i18next-toolkit/nextjs-approuter";
@@ -60,7 +60,7 @@ export function Footer() {
 						rel="noopener noreferrer"
 						aria-label={t('GitHub')}
 					>
-						<FaGithub className="size-4" />
+						<Github className="size-4" />
 					</a>
 					<span className="text-muted-foreground ml-2 text-xs">
 						© {new Date().getFullYear()} Cutia

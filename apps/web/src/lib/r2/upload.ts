@@ -1,5 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { NodeHttpHandler } from "@smithy/node-http-handler";
+import { AwsClient } from "aws4fetch";
 import { webEnv } from "@cutia/env/web";
 
 function getR2Config() {
@@ -32,24 +31,16 @@ function getR2Config() {
 	};
 }
 
-let cachedClient: S3Client | undefined;
+let cachedClient: AwsClient | undefined;
 
-function getR2Client(): S3Client {
+function getR2Client(): AwsClient {
 	if (cachedClient) return cachedClient;
 	const config = getR2Config();
-	cachedClient = new S3Client({
+	cachedClient = new AwsClient({
+		accessKeyId: config.R2_ACCESS_KEY_ID,
+		secretAccessKey: config.R2_SECRET_ACCESS_KEY,
+		service: "s3",
 		region: "auto",
-		endpoint: `https://${config.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-		credentials: {
-			accessKeyId: config.R2_ACCESS_KEY_ID,
-			secretAccessKey: config.R2_SECRET_ACCESS_KEY,
-		},
-		// Use Node.js http handler instead of fetch (Bun's BoringSSL is
-		// incompatible with Cloudflare R2's TLS cipher suite)
-		requestHandler: new NodeHttpHandler({
-			connectionTimeout: 10_000,
-			requestTimeout: 30_000,
-		}),
 	});
 	return cachedClient;
 }
@@ -67,14 +58,21 @@ export async function uploadToR2({
 	const client = getR2Client();
 	const body = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
 
-	await client.send(
-		new PutObjectCommand({
-			Bucket: config.R2_BUCKET_NAME,
-			Key: key,
-			Body: body,
-			ContentType: contentType,
-		}),
-	);
+	const endpoint = `https://${config.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${config.R2_BUCKET_NAME}/${key}`;
+
+	const response = await client.fetch(endpoint, {
+		method: "PUT",
+		headers: {
+			"Content-Type": contentType,
+		},
+		body,
+	});
+
+	if (!response.ok) {
+		throw new Error(
+			`R2 upload failed: ${response.status} ${response.statusText}`,
+		);
+	}
 
 	const publicUrl = config.R2_PUBLIC_URL.replace(/\/$/, "");
 	return `${publicUrl}/${key}`;

@@ -6,10 +6,12 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   },
   reactStrictMode: true,
-  productionBrowserSourceMaps: true,
   output: "standalone",
   outputFileTracingIncludes: {
     "/**": ["./public/locales/**/*"],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@hugeicons/core-free-icons"],
   },
   images: {
     remotePatterns: [
